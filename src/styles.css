@@ -848,6 +848,19 @@ footer {
   background: var(--soft);
   border-color: var(--accent);
 }
+.share-web-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+.share-web-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--accent);
+  font-size: 12px;
+}
 .share-help,
 .share-success {
   margin: 10px 0 0;

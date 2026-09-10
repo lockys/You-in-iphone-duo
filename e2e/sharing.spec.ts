@@ -23,6 +23,7 @@ test('真實 MP4 分享、社群下載、系統取消及錯誤處理', async ({ 
       value: async (data: ShareData) => {
         if (state.shareOutcome === 'cancel') throw new DOMException('Cancelled', 'AbortError');
         if (state.shareOutcome === 'error') throw new DOMException('Unavailable', 'NotAllowedError');
+        if (state.shareOutcome === 'pending') await new Promise(() => {});
         const file = data.files![0];
         await state.captureShare({
           size: file.size,
@@ -76,6 +77,12 @@ test('真實 MP4 分享、社群下載、系統取消及錯誤處理', async ({ 
   await expect(notice).toHaveCount(0);
   await expect(dialog).toBeVisible();
   const downloading = page.waitForEvent('download');
+  // Android may never resolve its native share promise. Fallbacks must stay usable.
+  await page.evaluate(() => {
+    (window as unknown as { shareOutcome: string }).shareOutcome = 'pending';
+  });
+  await page.getByRole('button', { name: 'Share video', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Share video', exact: true })).toBeDisabled();
   await dialog.getByRole('link', { name: 'Download MP4', exact: true }).click();
   const download = await downloading;
   expect(await download.failure()).toBeNull();
@@ -88,6 +95,13 @@ test('真實 MP4 分享、社群下載、系統取消及錯誤處理', async ({ 
     const android = await page.evaluate(() => /Android/i.test(navigator.userAgent));
     expect(href.startsWith('intent://')).toBe(android);
     if (android) expect(href).toContain('S.browser_fallback_url=https%3A');
+    if (android) {
+      const fallback = dialog.getByRole('link', { name: `Open ${platform} website` });
+      await expect(fallback).toBeVisible();
+      expect(await fallback.getAttribute('href')).toMatch(/^https:\/\//);
+      expect(decodeURIComponent((await fallback.getAttribute('href'))!)).toContain('#uiniphoneduo');
+      await expect(fallback).toHaveAttribute('target', '_blank');
+    }
     await link.click();
     await expect(dialog.getByRole('status')).toContainText(`to your ${platform} post`);
   }

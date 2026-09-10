@@ -138,6 +138,7 @@ export const messages = {
     'Attach the downloaded MP4 to your {platform} post.',
   ],
   shareHandedOff: ['已交給系統分享選單。', '已交给系统分享菜单。', 'Handed off to the share sheet.'],
+  shareWebsite: ['開啟 {platform} 網頁版', '打开 {platform} 网页版', 'Open {platform} website'],
   'error.shareSize': [
     '影片太大，請下載 MP4 後分享。',
     '视频太大，请下载 MP4 后分享。',

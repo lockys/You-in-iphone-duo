@@ -9,6 +9,7 @@ import {
   canShareVideo,
   prepareShareFile,
   mobileSocialIntent,
+  socialIntent,
   shareDownloadUrl,
   socialPlatforms,
   videoShareData,
@@ -83,7 +84,6 @@ export default function SharePanel({ url }: { url: string }) {
     }
   };
   const openSocial = (target: SocialPlatform) => {
-    if (busy) return;
     setPlatform(target);
     setError(undefined);
   };
@@ -154,26 +154,28 @@ export default function SharePanel({ url }: { url: string }) {
                 href={mobileSocialIntent(target, t('shareCaption'), userAgent)}
                 target={/Android/i.test(userAgent) ? '_self' : '_blank'}
                 rel="noopener noreferrer"
-                aria-disabled={busy}
-                onClick={(event) => {
-                  if (busy) event.preventDefault();
-                  else openSocial(target);
-                }}
+                onClick={() => openSocial(target)}
                 aria-label={t('shareTo', { platform: target })}
               >
                 {target}
               </a>
             ))}
           </div>
-          <a
-            href={shareDownloadUrl(url)}
-            download="iphone-duo.mp4"
-            className="share-native"
-            aria-disabled={busy}
-            onClick={(event) => {
-              if (busy) event.preventDefault();
-            }}
-          >
+          {/Android/i.test(userAgent) && (
+            <div className="share-web-links">
+              {socialPlatforms.map((target) => (
+                <a
+                  key={target}
+                  href={socialIntent(target, t('shareCaption'))}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {t('shareWebsite', { platform: target })}
+                </a>
+              ))}
+            </div>
+          )}
+          <a href={shareDownloadUrl(url)} download="iphone-duo.mp4" className="share-native">
             {t('download')}
           </a>
           <p className="share-help" role="status" aria-live="polite">
