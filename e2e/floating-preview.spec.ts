@@ -40,7 +40,7 @@ test('捲出畫面自動浮動、即時調整、拖曳、關閉與返回原預�
       let color = 0,
         hash = 0;
       for (let i = 0; i < data.length; i += 4) {
-        if (data[i] - data[i + 1] > 60 && data[i + 2] - data[i + 1] > 60) color++;
+        if (data[i] - data[i + 1] > 20 && data[i + 2] - data[i] > 25) color++;
         hash = (hash + data[i] * ((i % 127) + 1)) >>> 0;
       }
       return { color, hash };

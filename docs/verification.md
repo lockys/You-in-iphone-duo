@@ -10,16 +10,18 @@
 | `npm run typecheck` | 通過                                                                                      |
 | `npm test`          | 5 個測試檔、56 項通過、0 失敗                                                             |
 | `npm run build`     | Rspack standalone 建置通過；有套件的 experimental 提醒                                    |
-| `npm run test:e2e`  | 19 項通過、0 失敗、0 跳過                                                                 |
+| `npm run test:e2e`  | 22 項通過、0 失敗、0 跳過                                                                 |
 | 影片 ffprobe        | 1920 × 1080、H.264 High、yuv420p、29.97 fps、AAC、5.84 秒                                 |
 | faststart           | moov atom 位於 mdat 之前                                                                  |
 | 完整影片解碼        | FFmpeg 解碼整段至 null output，結束碼 0                                                   |
 | 原始模板保留        | 根目錄及 public 內的 8150.mp4 SHA-256 相同                                                |
 | 私人檔案隔離        | standalone 只含程式依賴、.next、public、package.json、server.js；沒有使用者暫存與測試素材 |
 
-本次 Vitest 約 23.2 秒，最終完整 E2E 約 1.8 分鐘。單次小型素材合成通常約 5–15 秒，取決於當時 CPU 工作量；這不是硬體效能保證。
+本次 Vitest 約 23.2 秒，加入浮動預覽後的最終完整 E2E 約 2 分鐘。單次小型素材合成通常約 5–15 秒，取決於當時 CPU 工作量；這不是硬體效能保證。
 
 ## 品牌、右側浮動列、分享與 Rspack
+
+後續加入可拖曳浮動預覽，並移除成品的完成標題及留白。專項 E2E 在 Chromium 桌機、手機與 WebKit 全部通過：捲動自動浮出／收回、相同 Canvas／video 元素持續使用、實際像素隨縮放更新、移動視窗不更改裁切值、原生單指事件、方向鍵、關閉後不立刻重現、返回按鈕的焦點及視窗縮放邊界。專項 i18n 測試 6 項通過；lint、typecheck、Rspack build 通過。新增浮動元件的設計 detector 無發現。最終完整 22 項 E2E 全數通過；[浮動預覽截圖](images/floating.png)。
 
 - 全站標題統一為 You, in iPhoneDuo；SVG 主圖示、單色版、字標、favicon、主畫面圖示及 Logo 總覽已產生並檢視。
 - 已讀取 [Apple Designing for iPhone Duo](https://developer.apple.com/design/human-interface-guidelines/designing-for-iphone-duo) 全文。右側操作列依「編輯／取消 → 主要動作 → 分享」排列，預留內容安全空間，使用圖示與完整無障礙名稱。

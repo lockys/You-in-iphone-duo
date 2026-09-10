@@ -27,11 +27,12 @@ export default function FloatingPreview({ children, enabled }: { children: React
     // Observe a placeholder with stable dimensions, never the element that becomes fixed.
     const observer = new IntersectionObserver(
       ([entry]) => {
-        const visible = entry.isIntersecting && entry.intersectionRatio >= 0.15;
+        // The bottom of the frame can remain visible while the phone itself is already offscreen.
+        const visible = entry.isIntersecting && entry.intersectionRatio >= 0.6;
         setOutside(!visible);
         if (visible) setDismissed(false);
       },
-      { threshold: [0, 0.15], rootMargin: '-12px 0px -12px 0px' },
+      { threshold: [0, 0.6], rootMargin: '-12px 0px -12px 0px' },
     );
     observer.observe(anchor.current);
     return () => observer.disconnect();
