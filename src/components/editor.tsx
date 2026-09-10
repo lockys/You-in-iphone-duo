@@ -471,6 +471,15 @@ export default function Editor() {
                 <RotateCcw size={14} />
                 {t('reset')}
               </button>
+              <label className="fold-toggle">
+                <span>{t('foldEffect')}</span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  checked={options.foldEffect === 'on'}
+                  onChange={(e) => setOptions((o) => ({ ...o, foldEffect: e.target.checked ? 'on' : 'off' }))}
+                />
+              </label>
               <div className="audio-group">
                 <div className="control-label">
                   <span>{t('sound')}</span>

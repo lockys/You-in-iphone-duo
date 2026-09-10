@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { MediaError } from './errors';
+import { foldProjection, FOLD_BLUR } from './fold-effect';
 export { MediaError } from './errors';
 
 export type Rect = { x: number; y: number; width: number; height: number };
@@ -30,6 +31,7 @@ export const optionsSchema = z.object({
   offsetX: z.coerce.number().finite().min(-1).max(1).default(0),
   offsetY: z.coerce.number().finite().min(-1).max(1).default(0),
   audioMode: z.enum(['template', 'user', 'mute']).default('template'),
+  foldEffect: z.enum(['on', 'off']).default('on'),
 });
 export type EditOptions = z.infer<typeof optionsSchema>;
 export const defaultOptions: EditOptions = {
@@ -38,6 +40,7 @@ export const defaultOptions: EditOptions = {
   offsetX: 0,
   offsetY: 0,
   audioMode: 'template',
+  foldEffect: 'on',
 };
 export function parseOptions(fields: Record<string, unknown>): EditOptions {
   const parsed = optionsSchema.safeParse(fields);
@@ -125,6 +128,10 @@ export function cover(media: Pick<MediaInfo, 'width' | 'height'>, rect: Rect, op
 export function frameAt(template: Template, time: number): Rect {
   return template.frames[Math.min(template.frames.length - 1, Math.max(0, Math.floor(time * template.fps)))];
 }
+export function contentFrame(template: Template, time: number, options: EditOptions): Rect {
+  const rect = frameAt(template, time);
+  return options.foldEffect === 'on' ? foldProjection(template, rect) : rect;
+}
 // Piecewise linear expressions use the same per-frame tracking table as Canvas.
 // Store expressions in a private file to avoid the Windows command-line length limit.
 function expression(values: number[]) {
@@ -139,6 +146,35 @@ function expression(values: number[]) {
   }
   return result;
 }
+function foldFilter(template: Template) {
+  // Keep original pixels while limiting effect buffers to the screen's envelope.
+  const left = Math.max(0, Math.floor((Math.min(...template.frames.map((r) => r.x)) - 16) / 2) * 2);
+  const top = Math.max(0, Math.floor((Math.min(...template.frames.map((r) => r.y)) - 16) / 2) * 2);
+  const right = Math.min(
+    template.width,
+    Math.ceil((Math.max(...template.frames.map((r) => r.x + r.width)) + 16) / 2) * 2,
+  );
+  const bottom = Math.min(
+    template.height,
+    Math.ceil((Math.max(...template.frames.map((r) => r.y + r.height)) + 16) / 2) * 2,
+  );
+  const width = right - left,
+    height = bottom - top;
+  const masks = [0, 2]
+    .map(
+      (i) =>
+        `[masksrc${i}]${i === 2 ? 'negate,' : ''}crop=${width}:2:${left}:0,scale=${width}:${height}:flags=neighbor,format=gbrp[foldmask${i}];\n`,
+    )
+    .join('');
+  return (
+    `[2:v:0]setpts=PTS-STARTPTS,fps=${template.fps},format=gbrp,extractplanes=r+b[masksrc0][masksrc2];\n` +
+    masks +
+    `[projected]crop=${width}:${height}:${left}:${top},format=gbrp,split=2[sharp][softsrc];\n` +
+    `[softsrc]gblur=sigma=${FOLD_BLUR}:steps=3[soft];\n` +
+    `[sharp][soft][foldmask0]maskedmerge[blurred];\n` +
+    `[blurred][foldmask2]blend=all_mode=multiply,pad=${template.width}:${template.height}:${left}:${top},format=rgba[content];\n`
+  );
+}
 export function buildRenderSpec(
   media: MediaInfo,
   template: Template,
@@ -149,9 +185,11 @@ export function buildRenderSpec(
   filterPath: string,
 ) {
   validateDuration(media.duration);
-  parseOptions(options);
+  options = parseOptions(options);
   if (options.startTime >= media.duration) throw new MediaError('error.startTime');
-  const transforms = template.frames.map((rect) => cover(media, rect, options));
+  const transforms = template.frames.map((rect) =>
+    cover(media, options.foldEffect === 'on' ? foldProjection(template, rect) : rect, options),
+  );
   const coordinate = (values: number[]) => expression(values.map((v) => Math.round(v))).replaceAll('n', 'on');
   const x = coordinate(transforms.map((t) => t.x));
   const y = coordinate(transforms.map((t) => t.y));
@@ -166,7 +204,8 @@ export function buildRenderSpec(
   // The two transforms cancel the intermediate aspect change: final content retains
   // its original aspect ratio and is positioned using the shared cover geometry.
   let filter =
-    `[0:v:0]setpts=PTS-STARTPTS,${tone}fps=${fps},scale=${template.width}:${template.height},setsar=1,perspective=x0='${x}':y0='${y}':x1='${right}':y1='${y}':x2='${x}':y2='${bottom}':x3='${right}':y3='${bottom}':sense=destination:eval=frame:interpolation=linear,format=rgba[content];\n` +
+    `[0:v:0]setpts=PTS-STARTPTS,${tone}fps=${fps},scale=${template.width}:${template.height},setsar=1,perspective=x0='${x}':y0='${y}':x1='${right}':y1='${y}':x2='${x}':y2='${bottom}':x3='${right}':y3='${bottom}':sense=destination:eval=frame:interpolation=linear,format=rgba[${options.foldEffect === 'on' ? 'projected' : 'content'}];\n` +
+    (options.foldEffect === 'on' ? foldFilter(template) : '') +
     `color=c=white:s=${template.width}x${template.height}:r=${fps}:d=${template.duration}[base];\n` +
     `[base][content]overlay=0:0:shortest=1[screen];\n` +
     `[1:v:0]setpts=PTS-STARTPTS,fps=${fps},tpad=stop_mode=clone:stop_duration=0.1,format=rgba,colorkey=${template.keyColor}:${template.similarity}:${template.blend},despill=type=green[phone];\n` +
@@ -206,6 +245,9 @@ export function buildRenderSpec(
     '2',
     '-i',
     templatePath,
+    ...(options.foldEffect === 'on'
+      ? ['-threads', '1', '-i', templatePath.replace(/[^\\/]+$/, 'fold-mask.mkv')]
+      : []),
     '-filter_complex_script',
     filterPath,
     '-map',

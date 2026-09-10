@@ -521,6 +521,41 @@ main {
   background: var(--soft);
   color: var(--accent);
 }
+.fold-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  margin-top: 20px;
+  cursor: pointer;
+}
+.fold-toggle input {
+  appearance: none;
+  width: 44px;
+  height: 26px;
+  border-radius: 16px;
+  background: #c8c5d1;
+  padding: 3px;
+  cursor: pointer;
+}
+.fold-toggle input::before {
+  content: '';
+  display: block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+}
+.fold-toggle input:checked {
+  background: var(--accent);
+}
+.fold-toggle input:checked::before {
+  transform: translateX(18px);
+}
+.fold-toggle input:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
 .audio-group {
   margin-top: 23px;
   padding-top: 20px;

@@ -218,7 +218,7 @@ export async function receiveMultipart(request: Request, dir: string, signal: Ab
   });
   parser.on('field', (name, value, info) => {
     if (
-      !['uploadId', 'startTime', 'scale', 'offsetX', 'offsetY', 'audioMode'].includes(name) ||
+      !['uploadId', 'startTime', 'scale', 'offsetX', 'offsetY', 'audioMode', 'foldEffect'].includes(name) ||
       name in fields ||
       info.valueTruncated
     )
@@ -255,7 +255,7 @@ export async function receiveMultipart(request: Request, dir: string, signal: Ab
   if (file && !size) throw new MediaError('error.emptyFile');
   return { fields, file, size };
 }
-export function templatePath(file: 'template.json' | '8150.mp4') {
+export function templatePath(file: 'template.json' | '8150.mp4' | 'preview.mp4') {
   return path.join(
     process.env.TEMPLATE_DIR || fileURLToPath(new URL('../../public/templates/', import.meta.url)),
     file,

@@ -2,6 +2,18 @@
 
 2026-09-10，Windows、Node.js 24.15.0、Modern.js 3.9.0、React 19.3.0、TypeScript 6.0.3。前端使用 Rsbuild／Rspack；原生 FFmpeg 6.1.1、ffprobe 4.0.2。
 
+## 摺疊效果
+
+- 將 MIT 授權的 [chuspeeism/iphone-duo](https://github.com/chuspeeism/iphone-duo/tree/2662ebbeb6aa844cd4f6888f7d6f8958662249fd) 螢幕投影及模糊／變暗漸層改編至 Canvas 與原生 FFmpeg；三語介面可開關。README 標明來源、版權與授權，完整 MIT 聲明隨網站發布。
+- 原生遮罩逐像素對照共用計算。FFV1 的遮罩採 16 列，避免過薄影格的 slice 編碼問題；38 KB 遮罩隨模板打包，不包含使用者影片。
+- 原生效果保留螢幕範圍的原始解析度。六分鐘來源從第 305 秒、1.2 倍縮放及 X=0.15 的合成峰值為 453,172 KiB（約 443 MiB），低於 512 MiB 回歸預算。
+- 修正 Modern.js Node 靜態影片缺少 Content-Length／Range 回應造成的跳轉歸零；加入 HEAD、206、suffix range 與 416 測試。
+- lint、typecheck、Modern.js production build、Vitest 11 檔 93 項通過。真實 MP4 的 1920×1080、H.264、yuv420p、faststart、模板長度與完整解碼通過。
+- 完整 Playwright 34 項通過（3.4 分鐘）：桌機 Chromium、手機 Chromium、手機 WebKit 都完成三語效果開關、指定摺疊影格的 Canvas／MP4 像素比較、播放及下載。
+- 已目視檢查開頭、外螢幕轉動、內螢幕展開及結尾共 8 個影格；手部與邊框完整，摺疊側出現漸層模糊及陰影，固定側保持清晰。另有 7 個時間點的原生像素回歸。
+
+效果校準與近似方式詳見 [fold-effect.md](fold-effect.md)。瀏覽器及正式站的最終驗證見本次 GitHub PR。
+
 ## 長影片合成的記憶體修正
 
 正式站接受六分鐘影片後，合成的 Vercel instance 曾因記憶體不足被終止。本機使用相同影片、305 秒起點及原生 graph 重現：FFmpeg 峰值 904,644 KiB，超過新增測試的 512 MiB 預算。
@@ -10,7 +22,7 @@
 
 lint、typecheck、Modern.js build 及 Vitest 8 檔 86 項通過；原生 MP4 格式、完整解碼與固定模板長度驗證通過。瀏覽器與正式站最終結果見記憶體修正 PR。
 
-## 目前：只限制大小與步驟圖示
+## 只限制大小與步驟圖示
 
 - 匯入保留 5 MiB 上限，取消前端、ffprobe、合成及開始時間的秒數上限。實際使用 360 秒／715,171 bytes 影片，從第 305 秒完成磁碟與跨冷啟動私有 Blob 合成。
 - 三個區塊標題加入一致的 1／2／3 SVG 步驟圖示。桌機、390px 手機及 320px 英文版已目視檢查，無橫向溢出；保留現有字體與右側操作列。
@@ -27,21 +39,21 @@ lint、typecheck、Modern.js build 及 Vitest 8 檔 86 項通過；原生 MP4 �
 
 ## 先前框架遷移與部署結果
 
-| 檢查 | 結果 |
-| --- | --- |
-| lint、typecheck | 通過 |
-| Vitest | 7 檔、73 項通過，約 28 秒 |
-| 完整 Playwright | 28 項通過，約 2.2 分鐘；最後串流邊界修正後，三瀏覽器合成流程另 3 項通過 |
-| 最後的 metadata／viewport 專項 | Chromium 桌機、手機、WebKit 三項通過 |
-| Modern.js production build | 通過 |
-| `npm run dev` | 使用 tsx 正常啟動，英文 SSR、原生上傳／預覽轉碼／刪除實測通過 |
-| Vercel Linux Preview build | 3e25e0e 部署 READY，原生工具與模板打包成功 |
-| Vercel Build Output API 產物 | 本機啟動通過：SSR、模板 API、FFmpeg／ffprobe、串流設定與缺少儲存設定錯誤 |
-| 可攜式 Node 產物 | 實際啟動，完成 FFmpeg 合成、1920×1080 H.264 串流下載及刪除 |
-| MP4 驗證 | H.264 High、yuv420p、1920×1080、29.97 fps、約 5.84 秒、faststart、完整解碼通過 |
-| Docker | 已更新使用 Modern.js Node 產物；本機沒有 Docker，未執行容器 build／run |
-| 真實雲端 API／瀏覽器 | 私有 Blob 已連接 Production／Preview；新版 API 拒絕超過 5 MiB 一個位元組的 ticket（413）。Chromium 瀏覽器完成 4,846,065 bytes 影片直傳、Canvas 像素、PiP、FFmpeg 合成、播放、MP4 下載與重新編輯 |
-| 正式 Vercel | CRON_SECRET 已設定於 Production／Preview；正式部署與清理排程的實測結果記錄於 [PR #1](https://github.com/lockys/iphone-duo-green-screen-tool/pull/1) |
+| 檢查                           | 結果                                                                                                                                                                                            |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| lint、typecheck                | 通過                                                                                                                                                                                            |
+| Vitest                         | 7 檔、73 項通過，約 28 秒                                                                                                                                                                       |
+| 完整 Playwright                | 28 項通過，約 2.2 分鐘；最後串流邊界修正後，三瀏覽器合成流程另 3 項通過                                                                                                                         |
+| 最後的 metadata／viewport 專項 | Chromium 桌機、手機、WebKit 三項通過                                                                                                                                                            |
+| Modern.js production build     | 通過                                                                                                                                                                                            |
+| `npm run dev`                  | 使用 tsx 正常啟動，英文 SSR、原生上傳／預覽轉碼／刪除實測通過                                                                                                                                   |
+| Vercel Linux Preview build     | 3e25e0e 部署 READY，原生工具與模板打包成功                                                                                                                                                      |
+| Vercel Build Output API 產物   | 本機啟動通過：SSR、模板 API、FFmpeg／ffprobe、串流設定與缺少儲存設定錯誤                                                                                                                        |
+| 可攜式 Node 產物               | 實際啟動，完成 FFmpeg 合成、1920×1080 H.264 串流下載及刪除                                                                                                                                      |
+| MP4 驗證                       | H.264 High、yuv420p、1920×1080、29.97 fps、約 5.84 秒、faststart、完整解碼通過                                                                                                                  |
+| Docker                         | 已更新使用 Modern.js Node 產物；本機沒有 Docker，未執行容器 build／run                                                                                                                          |
+| 真實雲端 API／瀏覽器           | 私有 Blob 已連接 Production／Preview；新版 API 拒絕超過 5 MiB 一個位元組的 ticket（413）。Chromium 瀏覽器完成 4,846,065 bytes 影片直傳、Canvas 像素、PiP、FFmpeg 合成、播放、MP4 下載與重新編輯 |
+| 正式 Vercel                    | CRON_SECRET 已設定於 Production／Preview；正式部署與清理排程的實測結果記錄於 [PR #1](https://github.com/lockys/iphone-duo-green-screen-tool/pull/1)                                             |
 
 ## Vercel 問題與回歸測試
 

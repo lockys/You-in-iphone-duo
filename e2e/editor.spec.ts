@@ -50,11 +50,16 @@ test('匯入、同步預覽、位置縮放、產生、下載與重新編輯', as
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'You, in iPhoneDuo' })).toBeVisible();
   await expect(page.getByRole('button', { name: '產生迷因' })).toBeDisabled();
+  await expect(page.getByRole('switch', { name: '摺疊效果' })).toBeChecked();
+  await expect(page.getByRole('switch', { name: '摺疊效果' })).toBeDisabled();
   await expect(page.getByLabel('選擇影片檔案')).toBeEnabled();
   await page.screenshot({ path: `evidence/ui-${testInfo.project.name}-empty.png`, fullPage: true });
   await page.getByLabel('選擇影片檔案').setInputFiles(path.resolve('tests/fixtures/portrait.mp4'));
   await expect(page.getByRole('button', { name: '產生迷因' })).toBeEnabled();
   await expect(page.getByText(/1.50 秒 · 360 × 640/)).toBeVisible();
+  await page.getByRole('switch', { name: '摺疊效果' }).uncheck();
+  await expect(page.getByRole('switch', { name: '摺疊效果' })).not.toBeChecked();
+  await page.getByRole('switch', { name: '摺疊效果' }).check();
   await page.getByLabel('畫面縮放', { exact: true }).fill('1.5');
   await page.getByLabel('X 水平位置').fill('0.2');
   await page.getByLabel('Y 垂直位置').fill('-0.2');
