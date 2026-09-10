@@ -266,13 +266,14 @@ main {
   --pip-safe-top: env(safe-area-inset-top, 0px);
   --pip-safe-bottom: env(safe-area-inset-bottom, 0px);
   position: fixed;
-  z-index: 9;
+  z-index: 20;
   width: min(280px, calc(100vw - 112px), calc((100dvh - 80px) * 16 / 9));
   border: 1px solid var(--line);
   border-radius: 12px;
   background: white;
   overflow: hidden;
   box-shadow: 0 8px 32px #27233329;
+  opacity: 0.88;
   touch-action: none;
 }
 .pip-header {

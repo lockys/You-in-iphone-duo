@@ -93,13 +93,20 @@ test('捲出畫面自動浮動、即時調整、拖曳、關閉與返回原預�
   await expect(floating).toBeVisible();
   await page.setViewportSize({ width: 390, height: 700 });
   await expect(floating).toBeInViewport();
+  const resizeBox = (await floating.boundingBox())!;
+  await page.mouse.move(resizeBox.x + 20, resizeBox.y + 20);
+  await page.mouse.down();
+  await page.mouse.move(389, resizeBox.y + 20, { steps: 6 });
+  await page.mouse.up();
   await expect
     .poll(async () => {
       const box = (await floating.boundingBox())!;
       const rail = (await page.getByTestId('action-rail').boundingBox())!;
-      return box.x + box.width <= rail.x - 8 && box.y + box.height <= 700;
+      const gap = 390 - box.x - box.width;
+      return gap >= 8 && gap <= 16 && box.x + box.width > rail.x && box.y + box.height <= 700;
     })
     .toBe(true);
+  await expect(floating).toHaveCSS('opacity', '0.88');
   await page.screenshot({ path: `evidence/floating-${testInfo.project.name}.png` });
   expect(errors).toEqual([]);
 });

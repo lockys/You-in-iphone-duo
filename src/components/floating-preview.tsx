@@ -47,10 +47,9 @@ export default function FloatingPreview({ children, enabled }: { children: React
     const bottom = top + (viewport?.height || innerHeight);
     const css = getComputedStyle(surface.current!);
     const inset = (side: string) => Math.max(12, parseFloat(css.getPropertyValue(`--pip-safe-${side}`)) || 0);
-    const railLeft = document.querySelector('.action-rail')?.getBoundingClientRect().left ?? right;
     const minX = left + inset('left');
     const minY = top + inset('top');
-    const maxX = Math.max(minX, Math.min(right - inset('right'), railLeft - 12) - box.width);
+    const maxX = Math.max(minX, right - inset('right') - box.width);
     const maxY = Math.max(minY, bottom - inset('bottom') - box.height);
     return { x: Math.max(minX, Math.min(maxX, point.x)), y: Math.max(minY, Math.min(maxY, point.y)) };
   };

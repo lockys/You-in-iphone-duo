@@ -21,6 +21,8 @@
 
 ## 品牌、右側浮動列、分享與 Rspack
 
+浮動預覽後續調整：可拖到最右側並保留安全邊界，視窗採 88% 不透明度。重新執行 lint、typecheck、Rspack build 及三個瀏覽器的浮動預覽專項 E2E，全部通過；確認右側邊界、透明度及 WebKit 實際影片畫面，並更新截圖。此小幅調整未重跑完整 E2E。
+
 後續加入可拖曳浮動預覽，並移除成品的完成標題及留白。專項 E2E 在 Chromium 桌機、手機與 WebKit 全部通過：捲動自動浮出／收回、相同 Canvas／video 元素持續使用、實際像素隨縮放更新、移動視窗不更改裁切值、原生單指事件、方向鍵、關閉後不立刻重現、返回按鈕的焦點及視窗縮放邊界。專項 i18n 測試 6 項通過；lint、typecheck、Rspack build 通過。新增浮動元件的設計 detector 無發現。最終完整 22 項 E2E 全數通過；[浮動預覽截圖](images/floating.png)。
 
 - 全站標題統一為 You, in iPhoneDuo；SVG 主圖示、單色版、字標、favicon、主畫面圖示及 Logo 總覽已產生並檢視。
