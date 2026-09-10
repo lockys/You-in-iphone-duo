@@ -11,6 +11,8 @@
 | 完整 Playwright | 22 項通過，約 2.1 分鐘 |
 | 最後的 metadata／viewport 專項 | Chromium 桌機、手機、WebKit 三項通過 |
 | Modern.js production build | 通過 |
+| `npm run dev` | 使用 tsx 正常啟動，英文 SSR、原生上傳／預覽轉碼／刪除實測通過 |
+| Vercel Linux Preview build | 3e25e0e 部署 READY，原生工具與模板打包成功 |
 | Vercel Build Output API 產物 | 本機啟動通過：SSR、模板 API、FFmpeg／ffprobe、串流設定與缺少儲存設定錯誤 |
 | 可攜式 Node 產物 | 實際啟動，完成 FFmpeg 合成、1920×1080 H.264 串流下載及刪除 |
 | MP4 驗證 | H.264 High、yuv420p、1920×1080、29.97 fps、約 5.84 秒、faststart、完整解碼通過 |
@@ -25,7 +27,7 @@
 
 另外檢查來源路徑簽章範圍、MIME／大小、過期與路徑穿越、跨 session 讀取／刪除權限、跨 instance 配額與工作上限、損壞影片清理、私有下載 redirect、缺少儲存設定，以及 Cron 授權。
 
-`scripts/verify-deployment.mjs` 直接載入 Modern.js 產生的 Vercel function，未使用開發伺服器代替。Windows 產物約 161 MiB，不包含使用者影片或 .env；實際 Linux 產物仍需由 Vercel 建置驗證。
+`scripts/verify-deployment.mjs` 直接載入 Modern.js 產生的 Vercel function，未使用開發伺服器代替。Windows 產物約 161 MiB，不包含使用者影片或 .env；Linux 產物也已在 Vercel 成功建置為 READY（部署 dpl_2JNhP7YKzkmyCECM7fDEHbZKC4un）。預覽站有 Vercel 登入保護；雲端功能尚未完成端到端驗證。
 
 ## 瀏覽器與影片
 

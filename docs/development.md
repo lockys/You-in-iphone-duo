@@ -46,7 +46,7 @@ npm start
 
 前端使用 **Modern.js 3.9.0**、React 19、TypeScript 與 Tailwind CSS。Modern.js 以 Rsbuild／Rspack 建置，啟用 SSR。路由位於 `src/routes`，API 由 `server/modern.server.ts` 的 Hono middleware 處理；沒有 Next.js 相依套件。
 
-`modern.config.ts` 設定根目錄的 `public/` 靜態素材與後端 TypeScript 編譯。語言 loader 決定初始 HTML，Helmet 更新標題與說明；切換語言不重建編輯器。
+`modern.config.ts` 設定根目錄的 `public/` 靜態素材與後端 TypeScript 編譯。開發指令以 tsx 載入後端 TypeScript，避免 Node 24 原生 strip-only 模式無法解析參數屬性。語言 loader 決定初始 HTML，Helmet 更新標題與說明；切換語言不重建編輯器。
 
 ## 分享作品
 

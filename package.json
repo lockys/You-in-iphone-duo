@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "modern dev",
+    "dev": "node --import tsx node_modules/@modern-js/app-tools/bin/modern.js dev",
     "build": "modern build",
     "start": "node scripts/start.mjs",
     "lint": "eslint .",
