@@ -19,7 +19,7 @@ function screenDetail(canvas: HTMLCanvasElement) {
     }
     return energy / Math.max(1, brightness);
   };
-  return { moving: detail(265), fixed: detail(484) };
+  return { moving: detail(365), fixed: detail(520) };
 }
 
 test('fold switch changes the preview and exported video with matching screen shading', async ({
