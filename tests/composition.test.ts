@@ -87,13 +87,13 @@ describe('輸入檔案與 ffprobe', () => {
       }).duration,
     ).toBe(5.84);
   });
-  it.each([undefined, '', '200', 'NaN', 'Infinity', '-1', '0'])('舊有或無效設定 %s 仍限制 5 MB', (value) => {
-    expect(uploadLimit(value)).toBe(5 * 1024 ** 2);
+  it.each([undefined, '', '200', 'NaN', 'Infinity', '-1', '0'])('舊有或無效設定 %s 仍限制 20 MB', (value) => {
+    expect(uploadLimit(value)).toBe(20 * 1024 ** 2);
   });
   it('允許部署縮小上限', () => expect(uploadLimit('2')).toBe(2 * 1024 ** 2));
-  it('5 MB 邊界可接受，超過一個位元組即拒絕', () => {
-    expect(() => validateFile('clip.mp4', 'video/mp4', 5 * 1024 ** 2)).not.toThrow();
-    expect(() => validateFile('clip.mp4', 'video/mp4', 5 * 1024 ** 2 + 1)).toThrow('影片不能超過 5 MB');
+  it('20 MB 邊界可接受，超過一個位元組即拒絕', () => {
+    expect(() => validateFile('clip.mp4', 'video/mp4', 20 * 1024 ** 2)).not.toThrow();
+    expect(() => validateFile('clip.mp4', 'video/mp4', 20 * 1024 ** 2 + 1)).toThrow('影片不能超過 20 MB');
   });
   it.each([
     ['clip.MOV', 'video/quicktime'],

@@ -3,6 +3,9 @@ import { MediaError } from './errors';
 
 export const socialPlatforms = ['Threads', 'X', 'Bluesky'] as const;
 export type SocialPlatform = (typeof socialPlatforms)[number];
+export function shareCaption(text = '') {
+  return `${text.replace(/#uiniphoneduo\b/gi, '').trim()} #uiniphoneduo`.trim();
+}
 // Web intents accept text, not local video attachments. Never append private media URLs.
 export function socialIntent(platform: SocialPlatform, text: string) {
   const url = new URL(
@@ -12,8 +15,18 @@ export function socialIntent(platform: SocialPlatform, text: string) {
       Bluesky: 'https://bsky.app/intent/compose',
     }[platform],
   );
-  url.searchParams.set('text', text);
+  url.searchParams.set('text', shareCaption(text));
   return url.toString();
+}
+export function mobileSocialIntent(platform: SocialPlatform, text: string, userAgent: string) {
+  const fallback = socialIntent(platform, text);
+  if (!/Android/i.test(userAgent)) return fallback;
+  return `intent://${fallback.slice('https://'.length)}#Intent;scheme=https;S.browser_fallback_url=${encodeURIComponent(fallback)};end`;
+}
+export function shareDownloadUrl(url: string) {
+  const parsed = new URL(url, 'https://local.invalid');
+  parsed.searchParams.set('download', '1');
+  return /^https?:\/\//.test(url) ? parsed.toString() : `${parsed.pathname}${parsed.search}${parsed.hash}`;
 }
 export function canShareVideo(file: File, browser: Pick<Navigator, 'share' | 'canShare'> = navigator) {
   try {
@@ -26,8 +39,8 @@ export function canShareVideo(file: File, browser: Pick<Navigator, 'share' | 'ca
     return false;
   }
 }
-export function videoShareData(file: File): ShareData {
-  return { files: [file], title: brandName };
+export function videoShareData(file: File, caption = ''): ShareData {
+  return { files: [file], title: brandName, text: shareCaption(caption) };
 }
 export async function prepareShareFile(url: string, signal: AbortSignal): Promise<File> {
   const response = await fetch(url, { signal });

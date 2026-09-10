@@ -98,18 +98,18 @@ it('未連接雲端儲存時回傳明確三語錯誤，並驗證 ticket 檔案�
   expect(invalid.status).toBe(400);
 });
 
-it('Blob ticket 限制 5 MB，超過一個位元組即拒絕且不建立素材', async () => {
+it('Blob ticket 限制 20 MB，超過一個位元組即拒絕且不建立素材', async () => {
   const { routeCloudApi: api } = await import('../server/cloud-api');
   const exact = await api(
-    req('/api/blob-ticket', { name: 'exact.mp4', mime: 'video/mp4', size: 5 * 1024 ** 2 }),
+    req('/api/blob-ticket', { name: 'exact.mp4', mime: 'video/mp4', size: 20 * 1024 ** 2 }),
   );
   expect(exact.status).toBe(200);
   const before = [...store.keys()].filter((key) => key.includes('/assets/'));
   const oversized = await api(
-    req('/api/blob-ticket', { name: 'large.mp4', mime: 'video/mp4', size: 5 * 1024 ** 2 + 1 }),
+    req('/api/blob-ticket', { name: 'large.mp4', mime: 'video/mp4', size: 20 * 1024 ** 2 + 1 }),
   );
   expect(oversized.status).toBe(413);
-  expect(await oversized.json()).toMatchObject({ code: 'error.fileSize', params: { size: 5 } });
+  expect(await oversized.json()).toMatchObject({ code: 'error.fileSize', params: { size: 20 } });
   expect([...store.keys()].filter((key) => key.includes('/assets/'))).toEqual(before);
 });
 
@@ -255,9 +255,40 @@ it('拒絕路徑穿越、過期存取，清理範圍只限本專案過期素材'
   store.set(`iphone-duo/v1/assets/${expired}/source`, {
     bytes: Buffer.from('test'),
     etag: '1',
-    uploadedAt: new Date(),
+    uploadedAt: new Date(Date.now() - 30 * 60000),
   });
   store.set('another-project/source', { bytes: Buffer.from('test'), etag: '1', uploadedAt: new Date() });
   expect(await sweepCloud()).toBe(1);
   expect(store.has('another-project/source')).toBe(true);
+});
+
+it('雲端存取 20 分鐘到期，原始影片在上傳 30 分鐘後才由排程清除', async () => {
+  vi.useFakeTimers();
+  try {
+    vi.stubEnv('MEDIA_TTL_MS', '1200000');
+    const { newCloudAsset, assetKey, getCloudAsset, sweepCloud } = await import('../server/cloud-store');
+    const start = Date.now();
+    const asset = await newCloudAsset('owner', {
+      kind: 'source',
+      size: 4,
+      mime: 'video/mp4',
+      extension: '.mp4',
+    });
+    expect(asset.expires).toBe(start + 20 * 60000);
+    const key = assetKey(asset.id, 'source');
+    store.set(key, { bytes: Buffer.from('test'), etag: '1', uploadedAt: new Date(start) });
+    vi.setSystemTime(start + 20 * 60000);
+    await expect(getCloudAsset(asset.id, 'owner')).rejects.toMatchObject({ code: 'error.expired' });
+    await sweepCloud();
+    expect(store.has(key)).toBe(true);
+    vi.setSystemTime(start + 30 * 60000 - 1);
+    await sweepCloud();
+    expect(store.has(key)).toBe(true);
+    vi.setSystemTime(start + 30 * 60000);
+    expect(await sweepCloud()).toBe(1);
+    expect(store.has(key)).toBe(false);
+    expect(await sweepCloud()).toBe(0);
+  } finally {
+    vi.useRealTimers();
+  }
 });

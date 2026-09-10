@@ -53,7 +53,7 @@ npm start
 完成後點右側「分享」：
 
 - 支援檔案分享的 HTTPS／localhost 瀏覽器，可直接呼叫系統分享選單，把真正的 MP4 交給已安裝且接受影片的 App。預先準備成品以保留 iOS 點擊授權；取消選單不顯示錯誤。
-- Threads、X、Bluesky 按鈕會下載 MP4 並開啟附有文案的發文頁；**Web intent 不會自動附加本機影片**，需在貼文中選擇剛下載的 MP4。網站不會代替使用者發布貼文。
+- 先點「下載 MP4」，再選 Threads、X、Bluesky 開啟貼文，避免 Android 在同一次點擊中攔截下載或彈出視窗。Android 使用 `intent://` 搭配 HTTPS fallback；其他裝置使用 HTTPS web intent。系統分享與社群文案均帶入 `#uiniphoneduo`。**URL scheme 不會自動附加本機影片**，需在貼文中選擇剛下載的 MP4；能否開啟 App 取決於該 App 的連結處理支援。依據 [Chrome Android Intent 文件](https://developer.chrome.com/docs/android/intents) 實作。網站不會代替使用者發布貼文。
 - 不會把 localhost 或帶權杖的私人影片網址放進社群文案。不建立公開成品託管服務。非安全的 LAN HTTP 瀏覽器通常只能使用下載後手動分享。
 - 只有支援系統檔案分享時，才把最長約六秒的成品暫存於瀏覽器記憶體；限制 64 MiB、30 秒，失敗可重試，離開或重新編輯時取消準備並釋放檔案參照。原始上傳與後端下載仍是串流。
 
@@ -181,15 +181,19 @@ HTTP 標頭尚未送出時的同源、忙碌與頻率錯誤使用 403 / 429 等�
 Vercel 的 function 請求／回應限制為 4.5 MB，且程式目錄唯讀。因此：
 
 1. 在本專案連接 **Private Vercel Blob**，建議與 function 同區域。連接 Production／Preview，使用自動提供的 `BLOB_STORE_ID` 、`BLOB_WEBHOOK_PUBLIC_KEY` 與 OIDC；不必建立長效讀寫 token。
-2. 設定隨機的 `CRON_SECRET`，讓 Vercel 每日呼叫 `/api/cleanup`。Hobby 的每日排程已列於設定檔。
-3. 保留 `MEDIA_TEMP_DIR` 或留白均可；Vercel 自動改用作業系統 `/tmp`。若設定 `APP_ORIGIN`，Production 與 Preview 必須各自符合實際網域。
-4. 重新部署，使用小型影片完成上傳、合成、播放與下載；再用大於 4.5 MB 的素材確認直傳流程。
+2. 設定隨機的 `CRON_SECRET`。`vercel.json` 保留 Hobby 支援的每日清理備援，避免部署失敗。若要在上傳 30～35 分鐘後刪除，必須另設外部排程每 5 分鐘以 `Authorization: Bearer <CRON_SECRET>` 呼叫正式網站的 `/api/cleanup`（尚未設定）；支援更頻繁 Cron 的 Vercel 方案也可改用 `*/5 * * * *`。只有每日備援時，到期後可能再保留約 24 小時。不要將實際密鑰寫入程式碼。
+3. `MEDIA_TTL_MS=1200000`：雲端素材建立 20 分鐘後無法存取；原始 Blob 上傳滿 30 分鐘後由清理排程刪除，正常約 30～35 分鐘。預覽、成品與 manifest 到期即可清除；失敗或主動刪除可提早清除。現有正式環境若有設定此變數，也必須改為 `1200000` 並重新部署。排程失敗或大量積壓會延後實際刪除。本機閒置素材則在 20 分鐘後由每分鐘清理器回收。
 
-瀏覽器先用 `/api/blob-ticket` 驗證檔名／MIME／大小，再透過 `/api/blob-upload` 取得只允許單一來源路徑的短效上傳簽章，直接串流至私有 Blob。`/api/upload` 只收小型 multipart `cloudId`；`/api/render` 收 `uploadId` 與編輯選項。使用者影片不經過 Vercel function 的上傳大小限制，仍限制 5 MiB。後端下載至私人暫存目錄後執行真正的 FFmpeg。
+   Cloud access expires after 20 minutes. Cron removes original uploads after 30 minutes (normally within 30–35 minutes); failures or explicit deletion may remove them earlier. Run the authenticated cleanup endpoint every five minutes; Vercel Hobby requires an external scheduler. Update any existing production `MEDIA_TTL_MS` override to `1200000` and redeploy.
+
+4. 保留 `MEDIA_TEMP_DIR` 或留白均可；Vercel 自動改用作業系統 `/tmp`。若設定 `APP_ORIGIN`，Production 與 Preview 必須各自符合實際網域。
+5. 重新部署，使用小型影片完成上傳、合成、播放與下載；再用大於 4.5 MB 的素材確認直傳流程。
+
+瀏覽器先用 `/api/blob-ticket` 驗證檔名／MIME／大小，再透過 `/api/blob-upload` 取得只允許單一來源路徑的短效上傳簽章，直接串流至私有 Blob。`/api/upload` 只收小型 multipart `cloudId`；`/api/render` 收 `uploadId` 與編輯選項。使用者影片不經過 Vercel function 的上傳大小限制，由 `MAX_UPLOAD_MB` 控制，預設與最高上限皆為 20 MiB（20,971,520 bytes）；可調低，修改後需重新啟動或部署，前端會透過 API 同步上限。後端下載至私人暫存目錄後執行真正的 FFmpeg。
 
 資產 metadata、每 IP 配額及工作數使用 Blob 條件寫入，跨冷啟動仍有效。預覽／下載回傳 60 秒內到期的私有簽名 URL，以避免大型影片回應經過 function。原始影片不提供讀取連結。未連接儲存時回傳明確的三語 `error.cloudStorage`，不再只有 generic error。
 
-資產建立 30 分鐘後停止存取；更換影片、離開或失敗會要求刪除。瀏覽器異常關閉、網路中斷留下的檔案由每日排程清除，正常排程下最久約再保留 24 小時；排程失敗則需修復後清理。私有儲存及傳輸會使用 Vercel Blob 配額，本專案不會自動升級付費方案。高解析度／HDR 影片可能仍超過 function 的 CPU、暫存空間或時間限制，較重工作請使用 Docker／一般 Node server。
+資產建立 20 分鐘後停止存取；更換影片、離開或失敗會要求刪除。瀏覽器異常關閉、網路中斷留下的原始檔上傳滿 30 分鐘後由每 5 分鐘排程清除；排程失敗則需修復後清理。私有儲存及傳輸會使用 Vercel Blob 配額，本專案不會自動升級付費方案。高解析度／HDR 影片可能仍超過 function 的 CPU、暫存空間或時間限制，較重工作請使用 Docker／一般 Node server。
 
 本機測試 Blob adapter 可設 `MEDIA_STORAGE=blob` 並使用開發環境憑證。正式雲端驗收需要真實私有 Blob；離線測試的儲存替身只用於測試，不會進入正式 API。
 
@@ -252,26 +256,26 @@ Playwright 覆蓋桌機 Chromium、Android 尺寸 Chromium、iPhone 尺寸 WebKi
 
 ## 主要檔案
 
-| 路徑                                                   | 用途                                                    |
-| ------------------------------------------------------ | ------------------------------------------------------- |
-| `src/components/editor.tsx`                            | 匯入、進度、編輯控制、成品下載                          |
-| `src/components/share-panel.tsx`、`src/lib/sharing.ts` | 系統檔案分享、社群 intent 與分享 dialog                 |
-| `public/brand/`、`scripts/prepare-brand.mjs`           | SVG 品牌素材、favicon／主畫面圖示與總覽                 |
-| `src/components/preview.tsx`                           | 同步 Canvas 色鍵、拖曳與雙指縮放                        |
-| `src/components/result-player.tsx`                     | 行動成品播放及捲動定位                                  |
-| `src/components/language-provider.tsx`                 | 不重載的語言切換、網址與偏好記憶                        |
-| `src/lib/i18n.ts`、`src/lib/errors.ts`                 | 三語字典、素材來源、穩定錯誤代碼與安全回應解碼          |
-| `src/routes/page.data.ts`、`server/modern.server.ts` | Modern.js 路由、SSR 語言、Hono API middleware |
-| `src/lib/composition.ts`                               | 前後端共用 cover、驗證、FFmpeg filter 產生              |
-| `src/lib/process.ts`                                   | 原生工具解析、ffprobe、timeout 與取消                   |
-| `src/lib/server.ts`                                    | 磁碟串流、session／唯讀權杖、限流、工作數、回收與 Range |
-| `server/routes/*`、`server/cloud-api.ts`、`server/cloud-store.ts` | 原生影片 API、Vercel 私有儲存、跨 instance 配額 |
-| `scripts/prepare-template.ts`                          | 真實模板分析、逐格追蹤與預覽準備                        |
-| `scripts/verify-video.ts`                              | 實際輸出與影格驗證                                      |
-| `scripts/start.mjs`                                    | Modern.js 正式啟動                       |
-| `tests/`、`e2e/`                                       | 單元／原生整合／像素與瀏覽器測試                        |
-| `evidence/`                                            | 實際輸出、ffprobe 結果、影格與 UI 截圖                  |
-| `docs/verification.md`                                 | 本次已執行的驗證結果與限制                              |
+| 路徑                                                              | 用途                                                    |
+| ----------------------------------------------------------------- | ------------------------------------------------------- |
+| `src/components/editor.tsx`                                       | 匯入、進度、編輯控制、成品下載                          |
+| `src/components/share-panel.tsx`、`src/lib/sharing.ts`            | 系統檔案分享、社群 intent 與分享 dialog                 |
+| `public/brand/`、`scripts/prepare-brand.mjs`                      | SVG 品牌素材、favicon／主畫面圖示與總覽                 |
+| `src/components/preview.tsx`                                      | 同步 Canvas 色鍵、拖曳與雙指縮放                        |
+| `src/components/result-player.tsx`                                | 行動成品播放及捲動定位                                  |
+| `src/components/language-provider.tsx`                            | 不重載的語言切換、網址與偏好記憶                        |
+| `src/lib/i18n.ts`、`src/lib/errors.ts`                            | 三語字典、素材來源、穩定錯誤代碼與安全回應解碼          |
+| `src/routes/page.data.ts`、`server/modern.server.ts`              | Modern.js 路由、SSR 語言、Hono API middleware           |
+| `src/lib/composition.ts`                                          | 前後端共用 cover、驗證、FFmpeg filter 產生              |
+| `src/lib/process.ts`                                              | 原生工具解析、ffprobe、timeout 與取消                   |
+| `src/lib/server.ts`                                               | 磁碟串流、session／唯讀權杖、限流、工作數、回收與 Range |
+| `server/routes/*`、`server/cloud-api.ts`、`server/cloud-store.ts` | 原生影片 API、Vercel 私有儲存、跨 instance 配額         |
+| `scripts/prepare-template.ts`                                     | 真實模板分析、逐格追蹤與預覽準備                        |
+| `scripts/verify-video.ts`                                         | 實際輸出與影格驗證                                      |
+| `scripts/start.mjs`                                               | Modern.js 正式啟動                                      |
+| `tests/`、`e2e/`                                                  | 單元／原生整合／像素與瀏覽器測試                        |
+| `evidence/`                                                       | 實際輸出、ffprobe 結果、影格與 UI 截圖                  |
+| `docs/verification.md`                                            | 本次已執行的驗證結果與限制                              |
 
 程式碼沿用儲存庫既有 [MIT License](../LICENSE)。模板影片屬第三方素材，來源已標示，MIT 程式授權不代表授予該影片的著作權。
 

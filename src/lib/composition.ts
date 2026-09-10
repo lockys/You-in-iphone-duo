@@ -47,7 +47,7 @@ export function parseOptions(fields: Record<string, unknown>): EditOptions {
   if (!parsed.success) throw new MediaError('error.invalidOptions');
   return parsed.data;
 }
-export const MAX_UPLOAD_BYTES = 5 * 1024 ** 2;
+export const MAX_UPLOAD_BYTES = 20 * 1024 ** 2;
 export function validateDuration(duration: number) {
   if (!Number.isFinite(duration) || duration <= 0) throw new MediaError('error.unreadable');
 }

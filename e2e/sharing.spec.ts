@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import path from 'node:path';
 
 test('真實 MP4 分享、社群下載、系統取消及錯誤處理', async ({ page }, testInfo) => {
-  const shares: { size: number; type: string; url?: string; header: string }[] = [];
+  const shares: { size: number; type: string; url?: string; header: string; text: string }[] = [];
   const opened: string[] = [];
   await page.exposeFunction('captureShare', (data: (typeof shares)[number]) => shares.push(data));
   await page.exposeFunction('captureIntent', (url: string) => opened.push(url));
@@ -14,7 +14,10 @@ test('真實 MP4 分享、社群下載、系統取消及錯誤處理', async ({ 
       captureIntent: (url: string) => void;
     };
     state.shareOutcome = 'success';
-    Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => true });
+    Object.defineProperty(navigator, 'canShare', {
+      configurable: true,
+      value: (data: ShareData) => !!data.files?.[0]?.size,
+    });
     Object.defineProperty(navigator, 'share', {
       configurable: true,
       value: async (data: ShareData) => {
@@ -26,13 +29,16 @@ test('真實 MP4 分享、社群下載、系統取消及錯誤處理', async ({ 
           type: file.type,
           url: data.url,
           header: await file.slice(4, 8).text(),
+          text: data.text,
         });
       },
     });
-    window.open = (url) => {
-      state.captureIntent(String(url));
-      return null;
-    };
+    document.addEventListener('click', (event) => {
+      const link = (event.target as Element).closest('.social-buttons a');
+      if (!link) return;
+      event.preventDefault();
+      state.captureIntent(link.getAttribute('href')!);
+    });
   });
   await page.goto('/?lang=en');
   await expect(page.getByLabel('Choose a video file')).toBeEnabled();
@@ -51,6 +57,7 @@ test('真實 MP4 分享、社群下載、系統取消及錯誤處理', async ({ 
   expect(shares[0]).toMatchObject({ type: 'video/mp4', header: 'ftyp' });
   expect(shares[0].size).toBeGreaterThan(1000);
   expect(shares[0].url).toBeUndefined();
+  expect(shares[0].text).toContain('#uiniphoneduo');
   await page.evaluate(() => {
     (window as unknown as { shareOutcome: string }).shareOutcome = 'cancel';
   });
@@ -68,12 +75,19 @@ test('真實 MP4 分享、社群下載、系統取消及錯誤處理', async ({ 
   await notice.getByRole('button', { name: 'Dismiss error' }).click();
   await expect(notice).toHaveCount(0);
   await expect(dialog).toBeVisible();
+  const downloading = page.waitForEvent('download');
+  await dialog.getByRole('link', { name: 'Download MP4', exact: true }).click();
+  const download = await downloading;
+  expect(await download.failure()).toBeNull();
+  expect(download.suggestedFilename()).toBe('phone-meme.mp4');
   for (const platform of ['Threads', 'X', 'Bluesky']) {
-    const downloading = page.waitForEvent('download');
-    await page.getByRole('button', { name: `Share to ${platform}`, exact: true }).click();
-    const download = await downloading;
-    expect(await download.failure()).toBeNull();
-    expect(download.suggestedFilename()).toBe('phone-meme.mp4');
+    const link = page.getByRole('link', { name: `Share to ${platform}`, exact: true });
+    const href = (await link.getAttribute('href'))!;
+    expect(decodeURIComponent(href)).toContain('#uiniphoneduo');
+    const android = await page.evaluate(() => /Android/i.test(navigator.userAgent));
+    expect(href.startsWith('intent://')).toBe(android);
+    if (android) expect(href).toContain('S.browser_fallback_url=https%3A');
+    await link.click();
     await expect(dialog.getByRole('status')).toContainText(`to your ${platform} post`);
   }
   expect(opened).toHaveLength(3);

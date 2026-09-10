@@ -18,7 +18,7 @@ export const cacheRoot =
     ? path.join(tmpdir(), 'iphone-duo-media')
     : path.resolve(process.env.MEDIA_TEMP_DIR || '.media-cache');
 export const maxBytes = uploadLimit(process.env.MAX_UPLOAD_MB);
-const ttl = Number(process.env.MEDIA_TTL_MS || 1800000);
+const ttl = Number(process.env.MEDIA_TTL_MS || 1200000);
 export type Asset = {
   id: string;
   readToken: string;

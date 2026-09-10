@@ -6,7 +6,8 @@ import type { MediaInfo } from '../src/lib/composition';
 export const cloudEnabled = () => process.env.VERCEL === '1' || process.env.MEDIA_STORAGE === 'blob';
 export const cloudConfigured = () => !!(process.env.BLOB_STORE_ID || process.env.BLOB_READ_WRITE_TOKEN);
 const prefix = 'iphone-duo/v1/';
-const ttl = () => Number(process.env.MEDIA_TTL_MS || 1800000);
+const ttl = () => Number(process.env.MEDIA_TTL_MS || 1200000);
+const sourceRetentionMs = 30 * 60 * 1000;
 export type CloudAsset = {
   id: string;
   owner: string;
@@ -151,12 +152,19 @@ export async function sweepCloud() {
   assertCloud();
   let cursor: string | undefined;
   let removed = 0;
-  // Bounded work per call; the daily cron repeats the sweep.
+  // Bounded work per call. An external five-minute scheduler can supplement
+  // the Hobby-compatible daily fallback configured in vercel.json.
   for (let page = 0; page < 10; page++) {
     const batch = await blob.list({ prefix, cursor, limit: 1000 });
     const expired = batch.blobs.filter((item) => {
-      const match = /^iphone-duo\/v1\/(?:assets|limits)\/(\d{13})-/.exec(item.pathname);
-      return match && Number(match[1]) < Date.now();
+      const match = /^iphone-duo\/v1\/(assets|limits)\/(\d{13})-/.exec(item.pathname);
+      if (!match) return false;
+      // Original uploads have a separate physical retention period. Use the
+      // object's upload timestamp so this also works for older asset IDs.
+      if (match[1] === 'assets' && item.pathname.endsWith('/source')) {
+        return new Date(item.uploadedAt).getTime() + sourceRetentionMs <= Date.now();
+      }
+      return Number(match[2]) <= Date.now();
     });
     if (expired.length) {
       await blob.del(expired.map((item) => item.pathname));

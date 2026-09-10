@@ -796,7 +796,9 @@ footer {
   display: flex;
   gap: 6px;
 }
-.social-buttons button {
+.social-buttons a {
+  text-align: center;
+  text-decoration: none;
   flex: 1;
   min-height: 44px;
   padding: 8px 5px;
@@ -806,7 +808,7 @@ footer {
   color: var(--ink);
   font-size: 12px;
 }
-.social-buttons button:hover:enabled {
+.social-buttons a:hover {
   background: var(--soft);
   border-color: var(--accent);
 }

@@ -22,16 +22,16 @@ test('長影片不限秒數，可選 305 秒；超大替換檔仍保留編輯並
       requests.push(request.url());
   });
   for (const [locale, message] of [
-    ['zh-Hant', '影片不能超過 5 MB。'],
-    ['zh-Hans', '视频不能超过 5 MB。'],
-    ['en', 'The video must be no larger than 5 MB.'],
+    ['zh-Hant', '影片不能超過 20 MB。'],
+    ['zh-Hans', '视频不能超过 20 MB。'],
+    ['en', 'The video must be no larger than 20 MB.'],
   ]) {
     await page.getByRole('combobox').selectOption(locale);
     await page.locator('.controls-card').scrollIntoViewIfNeeded();
     await picker.setInputFiles({
       name: 'large.mp4',
       mimeType: 'video/mp4',
-      buffer: Buffer.alloc(5 * 1024 ** 2 + 1),
+      buffer: Buffer.alloc(20 * 1024 ** 2 + 1),
     });
     await expect(page.getByRole('alert')).toContainText(message);
     await expect(page.getByRole('alert')).toBeInViewport();
@@ -136,19 +136,23 @@ test('無音訊、取消處理與錯誤提示', async ({ page }) => {
   await expect(page.locator('.error-banner')).toHaveCount(0);
 });
 
-test('5 MB 上限會在影片傳輸前拒絕超大檔案', async ({ page }) => {
+test('20 MB 上限會在影片傳輸前拒絕超大檔案', async ({ page }) => {
   let uploaded = false;
   page.on('request', (request) => {
     if (['/api/upload', '/api/blob-ticket'].includes(new URL(request.url()).pathname)) uploaded = true;
   });
   await page.goto('/?lang=zh-Hant');
   await expect(page.getByLabel('選擇影片檔案')).toBeEnabled();
-  await expect(page.getByText('支援 iPhone 影片，最大 5 MB・不限秒數')).toBeVisible();
+  await expect(page.getByText('支援 iPhone 影片，最大 20 MB・不限秒數')).toBeVisible();
   await page.locator('.controls-card').scrollIntoViewIfNeeded();
   await page
     .getByLabel('選擇影片檔案')
-    .setInputFiles({ name: 'too-large.mp4', mimeType: 'video/mp4', buffer: Buffer.alloc(5 * 1024 ** 2 + 1) });
-  await expect(page.locator('.error-banner')).toContainText('影片不能超過 5 MB');
+    .setInputFiles({
+      name: 'too-large.mp4',
+      mimeType: 'video/mp4',
+      buffer: Buffer.alloc(20 * 1024 ** 2 + 1),
+    });
+  await expect(page.locator('.error-banner')).toContainText('影片不能超過 20 MB');
   await expect(page.locator('.error-banner')).toBeInViewport();
   const notice = (await page.locator('.error-banner').boundingBox())!;
   expect(notice.y).toBeGreaterThanOrEqual(12);

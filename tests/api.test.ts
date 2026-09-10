@@ -33,7 +33,7 @@ afterAll(() => vi.unstubAllEnvs());
 describe('原生 API 整合', () => {
   it('六分鐘影片可匯入並從第 305 秒合成，API 僅宣告大小上限', async () => {
     const config = await (await getTemplate(new Request(url + '/api/template'))).json();
-    expect(config).toMatchObject({ maxBytes: 5 * 1024 ** 2, maxDuration: null });
+    expect(config).toMatchObject({ maxBytes: 20 * 1024 ** 2, maxDuration: null });
     const form = new FormData();
     form.set('file', await fixture('long.mp4'));
     const imported = (await events(await upload(request('/api/upload', form)))).at(-1)!;
@@ -54,16 +54,16 @@ describe('原生 API 整合', () => {
         });
     }
   });
-  it('磁碟串流接受恰好 5 MB，超過一個位元組即拒絕', async () => {
+  it('磁碟串流接受恰好 20 MB，超過一個位元組即拒絕', async () => {
     await mkdir(cacheRoot, { recursive: true });
     const dir = await mkdtemp(`${cacheRoot}/limit-`);
     try {
       const form = new FormData();
-      form.set('file', new File([Buffer.alloc(5 * 1024 ** 2)], 'exact.mp4', { type: 'video/mp4' }));
+      form.set('file', new File([Buffer.alloc(20 * 1024 ** 2)], 'exact.mp4', { type: 'video/mp4' }));
       const exact = await receiveMultipart(request('/api/upload', form), dir, new AbortController().signal);
-      expect(exact.size).toBe(5 * 1024 ** 2);
+      expect(exact.size).toBe(20 * 1024 ** 2);
       await rm(exact.file!);
-      form.set('file', new File([Buffer.alloc(5 * 1024 ** 2 + 1)], 'large.mp4', { type: 'video/mp4' }));
+      form.set('file', new File([Buffer.alloc(20 * 1024 ** 2 + 1)], 'large.mp4', { type: 'video/mp4' }));
       await expect(
         receiveMultipart(request('/api/upload', form), dir, new AbortController().signal),
       ).rejects.toMatchObject({ status: 413 });
@@ -235,10 +235,10 @@ describe('原生 API 整合', () => {
     const form = new FormData();
     form.set('file', await fixture());
     const req = request('/api/render', form);
-    req.headers.set('content-length', String(6 * 1024 ** 2));
+    req.headers.set('content-length', String(21 * 1024 ** 2));
     expect((await events(await render(req))).at(-1)).toMatchObject({
       type: 'error',
-      error: '影片不能超過 5 MB。',
+      error: '影片不能超過 20 MB。',
     });
     expect((await readdir(cacheRoot)).sort()).toEqual(before);
   });

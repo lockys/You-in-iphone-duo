@@ -8,7 +8,8 @@ import type { ErrorCode } from '@/lib/i18n';
 import {
   canShareVideo,
   prepareShareFile,
-  socialIntent,
+  mobileSocialIntent,
+  shareDownloadUrl,
   socialPlatforms,
   videoShareData,
   type SocialPlatform,
@@ -27,7 +28,9 @@ export default function SharePanel({ url }: { url: string }) {
   const [platform, setPlatform] = useState<SocialPlatform>();
   const [error, setError] = useState<ErrorCode>();
   const [attempt, setAttempt] = useState(0);
+  const [userAgent, setUserAgent] = useState('');
   useEffect(() => {
+    setUserAgent(navigator.userAgent);
     mounted.current = true;
     const controller = new AbortController();
     let timedOut = false;
@@ -36,7 +39,7 @@ export default function SharePanel({ url }: { url: string }) {
       controller.abort();
     }, 30000);
     const prepare = async () => {
-      if (!canShareVideo(new File([''], 'iphone-duo.mp4', { type: 'video/mp4' }))) {
+      if (typeof navigator.share !== 'function' || typeof navigator.canShare !== 'function') {
         clearTimeout(timeout);
         if (mounted.current) setState('unsupported');
         return;
@@ -70,7 +73,7 @@ export default function SharePanel({ url }: { url: string }) {
     setHandedOff(false);
     try {
       // Called directly from the click, with a prepared file, preserving user activation on iOS.
-      await navigator.share(videoShareData(file.current));
+      await navigator.share(videoShareData(file.current, t('shareCaption')));
       if (mounted.current) setHandedOff(true);
     } catch (cause) {
       if (mounted.current && !(cause instanceof DOMException && cause.name === 'AbortError'))
@@ -81,13 +84,6 @@ export default function SharePanel({ url }: { url: string }) {
   };
   const openSocial = (target: SocialPlatform) => {
     if (busy) return;
-    window.open(socialIntent(target, t('shareCaption')), '_blank', 'noopener,noreferrer');
-    const link = document.createElement('a');
-    link.href = `${url}&download=1`;
-    link.download = 'iphone-duo.mp4';
-    document.body.append(link);
-    link.click();
-    link.remove();
     setPlatform(target);
     setError(undefined);
   };
@@ -153,17 +149,33 @@ export default function SharePanel({ url }: { url: string }) {
           )}
           <div className="social-buttons">
             {socialPlatforms.map((target) => (
-              <button
+              <a
                 key={target}
-                type="button"
-                disabled={busy}
-                onClick={() => openSocial(target)}
+                href={mobileSocialIntent(target, t('shareCaption'), userAgent)}
+                target={/Android/i.test(userAgent) ? '_self' : '_blank'}
+                rel="noopener noreferrer"
+                aria-disabled={busy}
+                onClick={(event) => {
+                  if (busy) event.preventDefault();
+                  else openSocial(target);
+                }}
                 aria-label={t('shareTo', { platform: target })}
               >
                 {target}
-              </button>
+              </a>
             ))}
           </div>
+          <a
+            href={shareDownloadUrl(url)}
+            download="iphone-duo.mp4"
+            className="share-native"
+            aria-disabled={busy}
+            onClick={(event) => {
+              if (busy) event.preventDefault();
+            }}
+          >
+            {t('download')}
+          </a>
           <p className="share-help" role="status" aria-live="polite">
             {platform ? t('shareAttach', { platform }) : t('shareHelp')}
           </p>

@@ -127,9 +127,9 @@ export const messages = {
     'Made with You, in iPhoneDuo.',
   ],
   shareHelp: [
-    '社群按鈕會下載 MP4 並開啟貼文，請手動附加影片。',
-    '社交按钮会下载 MP4 并打开发帖页面，请手动添加视频。',
-    'Social buttons download your MP4 and open a post. Attach the video to finish.',
+    '先下載 MP4，再開啟社群貼文並附加影片。文案包含 #uiniphoneduo。',
+    '先下载 MP4，再打开社交平台帖子并添加视频。文案包含 #uiniphoneduo。',
+    'Download the MP4, then open a social post and attach it. The caption includes #uiniphoneduo.',
   ],
   shareAttach: [
     '請將下載的 MP4 加入 {platform} 貼文。',
