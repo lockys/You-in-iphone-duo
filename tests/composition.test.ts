@@ -7,6 +7,7 @@ import {
   buildRenderSpec,
   frameAt,
   uploadLimit,
+  validateUploadDuration,
 } from '../src/lib/composition';
 
 const rect = { x: 770, y: 215, width: 445, height: 630 };
@@ -59,6 +60,32 @@ describe('真實 cover 與編輯參數', () => {
 });
 
 describe('輸入檔案與 ffprobe', () => {
+  it('接受恰好 5 秒，超過上限即拒絕', () => {
+    expect(() => validateUploadDuration(5)).not.toThrow();
+    expect(() => validateUploadDuration(5.001)).toThrow('影片最長可匯入 5 秒');
+  });
+  it('非常長的匯入影片仍回傳 5 秒上限', () => {
+    expect(() =>
+      parseProbe(
+        {
+          streams: [{ codec_type: 'video', width: 160, height: 90 }],
+          format: { duration: '301' },
+        },
+        5,
+      ),
+    ).toThrow('影片最長可匯入 5 秒');
+  });
+  it.each([0, -1, NaN, Infinity])('拒絕無效長度 %s', (duration) => {
+    expect(() => validateUploadDuration(duration)).toThrow();
+  });
+  it('模板與成品的 ffprobe 不受匯入上限影響', () => {
+    expect(
+      parseProbe({
+        streams: [{ codec_type: 'video', width: 1920, height: 1080 }],
+        format: { duration: '5.84' },
+      }).duration,
+    ).toBe(5.84);
+  });
   it.each([undefined, '', '200', 'NaN', 'Infinity', '-1', '0'])('舊有或無效設定 %s 仍限制 5 MB', (value) => {
     expect(uploadLimit(value)).toBe(5 * 1024 ** 2);
   });
@@ -106,6 +133,11 @@ describe('輸入檔案與 ffprobe', () => {
 });
 
 describe('FFmpeg 原生輸出', () => {
+  it('合成也拒絕舊快取中超過 5 秒的來源', () => {
+    expect(() =>
+      buildRenderSpec({ ...meta, duration: 5.04 }, template, options, 'in', 'tpl', 'out', 'graph'),
+    ).toThrow('影片最長可匯入 5 秒');
+  });
   it('短影片循環，從指定秒數開始', () => {
     const spec = buildRenderSpec(
       meta,

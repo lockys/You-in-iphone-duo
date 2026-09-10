@@ -5,7 +5,7 @@ import { pipeline } from 'node:stream/promises';
 import * as blob from '@vercel/blob';
 import { handleUploadPresigned, type HandleUploadPresignedBody } from '@vercel/blob/client';
 import { errorFromResponse, MediaError } from '../src/lib/errors';
-import { validateFile } from '../src/lib/composition';
+import { MAX_UPLOAD_DURATION, validateFile } from '../src/lib/composition';
 import {
   checkOrigin,
   createAsset,
@@ -332,7 +332,7 @@ export async function routeCloudApi(request: Request): Promise<Response> {
     if (pathname === '/api/template' && request.method === 'GET') {
       const auth = session(request);
       return Response.json(
-        { template: await loadTemplate(), maxBytes, storage: 'blob' },
+        { template: await loadTemplate(), maxBytes, maxDuration: MAX_UPLOAD_DURATION, storage: 'blob' },
         {
           headers: {
             'Cache-Control': 'private, no-store',

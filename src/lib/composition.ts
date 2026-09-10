@@ -24,8 +24,9 @@ export type Template = {
   blend: number;
   keyColor: string;
 };
+export const MAX_UPLOAD_DURATION = 5;
 export const optionsSchema = z.object({
-  startTime: z.coerce.number().finite().min(0).max(300).default(0),
+  startTime: z.coerce.number().finite().min(0).max(MAX_UPLOAD_DURATION).default(0),
   scale: z.coerce.number().finite().min(1).max(3).default(1),
   offsetX: z.coerce.number().finite().min(-1).max(1).default(0),
   offsetY: z.coerce.number().finite().min(-1).max(1).default(0),
@@ -45,6 +46,11 @@ export function parseOptions(fields: Record<string, unknown>): EditOptions {
   return parsed.data;
 }
 export const MAX_UPLOAD_BYTES = 5 * 1024 ** 2;
+export function validateUploadDuration(duration: number) {
+  if (!Number.isFinite(duration) || duration <= 0) throw new MediaError('error.unreadable');
+  if (duration > MAX_UPLOAD_DURATION)
+    throw new MediaError('error.duration', 400, { seconds: MAX_UPLOAD_DURATION });
+}
 export function uploadLimit(megabytes?: string) {
   const configured = Number(megabytes);
   return Number.isFinite(configured) && configured > 0
@@ -86,7 +92,7 @@ export function parseProbe(
   const height = Number(video?.height);
   if (!video || !Number.isFinite(duration) || duration <= 0 || !width || !height)
     throw new MediaError('error.unreadable');
-  if (duration > maxDuration) throw new MediaError('error.duration', 400, { minutes: maxDuration / 60 });
+  if (duration > maxDuration) throw new MediaError('error.duration', 400, { seconds: maxDuration });
   if (width * height > 4096 * 2160 || width > 4096 || height > 4096) throw new MediaError('error.resolution');
   const rotation =
     ((Number(
@@ -146,6 +152,7 @@ export function buildRenderSpec(
   output: string,
   filterPath: string,
 ) {
+  validateUploadDuration(media.duration);
   parseOptions(options);
   if (options.startTime >= media.duration) throw new MediaError('error.startTime');
   const transforms = template.frames.map((rect) => cover(media, rect, options));
