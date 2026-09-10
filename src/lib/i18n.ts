@@ -62,6 +62,7 @@ export const messages = {
   horizontal: ['X 水平位置', 'X 水平位置', 'X position'],
   vertical: ['Y 垂直位置', 'Y 垂直位置', 'Y position'],
   reset: ['重設位置', '重置位置', 'Reset position'],
+  foldEffect: ['摺疊效果', '折叠效果', 'Fold effect'],
   sound: ['影片聲音', '视频声音', 'Audio'],
   audioOptions: ['音訊選項', '音频选项', 'Audio options'],
   templateAudio: ['模板原音', '模板原声', 'Template'],

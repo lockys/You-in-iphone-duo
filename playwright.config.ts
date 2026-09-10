@@ -17,6 +17,7 @@ export default defineConfig({
       name: 'desktop-chromium',
       testMatch: [
         'editor.spec.ts',
+        'fold-effect.spec.ts',
         'i18n.spec.ts',
         'duo.spec.ts',
         'sharing.spec.ts',
@@ -30,6 +31,7 @@ export default defineConfig({
       name: 'mobile-webkit',
       testMatch: [
         'editor.spec.ts',
+        'fold-effect.spec.ts',
         'i18n.spec.ts',
         'duo.spec.ts',
         'sharing.spec.ts',

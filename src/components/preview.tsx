@@ -4,7 +4,15 @@ import { Pause, Play, VolumeX, Move, RotateCcw } from 'lucide-react';
 import { useLanguage } from './language-provider';
 import FloatingPreview from './floating-preview';
 import type { ErrorCode } from '@/lib/i18n';
-import { cover, frameAt, type EditOptions, type MediaInfo, type Template } from '@/lib/composition';
+import {
+  cover,
+  frameAt,
+  contentFrame,
+  type EditOptions,
+  type MediaInfo,
+  type Template,
+} from '@/lib/composition';
+import { paintFold } from '@/lib/fold-preview';
 
 type Props = {
   template: Template;
@@ -48,6 +56,7 @@ export default function Preview({ template, source, media, options, onChange, di
       lastDraw = -1,
       lastUI = -1,
       stopped = false;
+    let lastRenderKey = '';
     const draw = () => {
       if (stopped) return;
       frame = requestAnimationFrame(draw);
@@ -61,17 +70,23 @@ export default function Preview({ template, source, media, options, onChange, di
         if (!player.paused && video.paused) void video.play().catch(() => {});
         if (player.paused && !video.paused) video.pause();
       }
-      // Paused frames still redraw, so every slider and drag is immediately visible.
+      // Paused frames redraw when media or settings change, without repeating blur work.
+      const opts = latest.current.options;
+      const renderKey = `${now}:${video?.currentTime}:${video?.readyState}:${opts.scale}:${opts.offsetX}:${opts.offsetY}:${opts.foldEffect}`;
+      if (renderKey === lastRenderKey) return;
       if (!player.paused && Math.abs(now - lastDraw) < 1 / 32) return;
+      lastRenderKey = renderKey;
       lastDraw = now;
       context.fillStyle = '#f1edff';
       context.fillRect(0, 0, target.width, target.height);
       if (video && video.readyState >= 2 && latest.current.media) {
-        const rect = cover(latest.current.media, frameAt(template, now), latest.current.options);
+        const rect = cover(latest.current.media, contentFrame(template, now, opts), opts);
         const ratio = target.width / template.width;
         context.drawImage(video, rect.x * ratio, rect.y * ratio, rect.width * ratio, rect.height * ratio);
       }
       try {
+        if (video && video.readyState >= 2 && latest.current.media && opts.foldEffect === 'on')
+          paintFold(context, template, frameAt(template, now), now);
         fg.drawImage(player, 0, 0, target.width, target.height);
         const image = fg.getImageData(0, 0, target.width, target.height);
         const pixels = image.data;
@@ -140,7 +155,7 @@ export default function Preview({ template, source, media, options, onChange, di
         scale: clamp((pinch.current.scale * distance) / Math.max(1, pinch.current.distance), 1, 3),
       });
     } else if (pointers.current.size === 1) {
-      const rect = frameAt(template, phone.current?.currentTime || 0);
+      const rect = contentFrame(template, phone.current?.currentTime || 0, opts);
       const transform = cover(media, rect, opts);
       const ratio = template.width / event.currentTarget.getBoundingClientRect().width;
       const maxX = (transform.width - rect.width) / 2,

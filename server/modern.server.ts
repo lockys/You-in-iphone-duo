@@ -2,6 +2,7 @@ import { defineServerConfig } from '@modern-js/server-runtime';
 import { routeApi } from './api';
 import { requestLocale } from '../src/lib/request-locale';
 import { htmlLanguages } from '../src/lib/i18n';
+import { serveTemplatePreview } from './template-preview';
 
 export default defineServerConfig({
   middlewares: [
@@ -12,6 +13,8 @@ export default defineServerConfig({
         c.header('Referrer-Policy', 'no-referrer');
         c.header('X-Content-Type-Options', 'nosniff');
         if (c.req.path.startsWith('/api/')) return routeApi(c.req.raw);
+        if (c.req.path === '/templates/preview.mp4' && ['GET', 'HEAD'].includes(c.req.method))
+          return serveTemplatePreview(c.req.raw);
         await next();
       },
     },

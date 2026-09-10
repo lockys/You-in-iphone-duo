@@ -32,7 +32,14 @@ const template = {
   blend: 0.1,
   keyColor: '0x00ff00',
 };
-const options = { startTime: 0, scale: 1, offsetX: 0, offsetY: 0, audioMode: 'template' as const };
+const options = {
+  startTime: 0,
+  scale: 1,
+  offsetX: 0,
+  offsetY: 0,
+  audioMode: 'template' as const,
+  foldEffect: 'off' as const,
+};
 
 describe('真實 cover 與編輯參數', () => {
   it('直式輸入等比例 cover，置中裁去多餘高度', () => {
