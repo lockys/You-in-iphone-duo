@@ -18,7 +18,7 @@
 | MP4 驗證 | H.264 High、yuv420p、1920×1080、29.97 fps、約 5.84 秒、faststart、完整解碼通過 |
 | Docker | 已更新使用 Modern.js Node 產物；本機沒有 Docker，未執行容器 build／run |
 | 真實雲端 API／瀏覽器 | 私有 Blob 已連接 Production／Preview；新版 API 拒絕超過 5 MiB 一個位元組的 ticket（413）。Chromium 瀏覽器完成 4,846,065 bytes 影片直傳、Canvas 像素、PiP、FFmpeg 合成、播放、MP4 下載與重新編輯 |
-| 正式 Vercel | 清理排程 CRON_SECRET 設定尚待授權，因此尚未更新正式網域 |
+| 正式 Vercel | CRON_SECRET 已設定於 Production／Preview；正式部署與清理排程的實測結果記錄於 [PR #1](https://github.com/lockys/iphone-duo-green-screen-tool/pull/1) |
 
 ## Vercel 問題與回歸測試
 
