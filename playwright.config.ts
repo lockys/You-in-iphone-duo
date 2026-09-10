@@ -15,13 +15,25 @@ export default defineConfig({
   projects: [
     {
       name: 'desktop-chromium',
-      testMatch: ['editor.spec.ts', 'i18n.spec.ts', 'duo.spec.ts', 'sharing.spec.ts'],
+      testMatch: [
+        'editor.spec.ts',
+        'i18n.spec.ts',
+        'duo.spec.ts',
+        'sharing.spec.ts',
+        'floating-preview.spec.ts',
+      ],
       use: { ...devices['Desktop Chrome'], channel: 'chromium', viewport: { width: 1440, height: 1080 } },
     },
     { name: 'mobile-chromium', use: { ...devices['Pixel 7'], channel: 'chromium' } },
     {
       name: 'mobile-webkit',
-      testMatch: ['editor.spec.ts', 'i18n.spec.ts', 'duo.spec.ts', 'sharing.spec.ts'],
+      testMatch: [
+        'editor.spec.ts',
+        'i18n.spec.ts',
+        'duo.spec.ts',
+        'sharing.spec.ts',
+        'floating-preview.spec.ts',
+      ],
       use: { ...devices['iPhone 13'], browserName: 'webkit' },
     },
   ],

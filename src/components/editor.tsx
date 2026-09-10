@@ -278,10 +278,12 @@ export default function Editor() {
                 )}
               </button>
             </div>
-            <div className="preview-card">
-              <div className="section-title">
-                <h2>{result ? t('resultTitle') : t('previewTitle')}</h2>
-              </div>
+            <div className={`preview-card${result ? ' result-card' : ''}`}>
+              {!result && (
+                <div className="section-title">
+                  <h2>{t('previewTitle')}</h2>
+                </div>
+              )}
               {result ? (
                 <ResultPlayer url={result.playUrl} onError={reportError} />
               ) : template ? (

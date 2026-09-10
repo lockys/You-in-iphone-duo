@@ -242,6 +242,9 @@ main {
   overflow: hidden;
   padding-top: 20px;
 }
+.preview-card.result-card {
+  padding-top: 0;
+}
 .preview-card > .section-title {
   padding: 0 22px;
 }
@@ -250,6 +253,68 @@ main {
   position: relative;
   background: #eff1f3;
   overflow: hidden;
+}
+.preview-anchor {
+  aspect-ratio: 16 / 9;
+}
+.preview-surface {
+  width: 100%;
+}
+.preview-surface.is-floating {
+  --pip-safe-left: env(safe-area-inset-left, 0px);
+  --pip-safe-right: env(safe-area-inset-right, 0px);
+  --pip-safe-top: env(safe-area-inset-top, 0px);
+  --pip-safe-bottom: env(safe-area-inset-bottom, 0px);
+  position: fixed;
+  z-index: 9;
+  width: min(280px, calc(100vw - 112px), calc((100dvh - 80px) * 16 / 9));
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: white;
+  overflow: hidden;
+  box-shadow: 0 8px 32px #27233329;
+  touch-action: none;
+}
+.pip-header {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  border-bottom: 1px solid var(--line);
+}
+.pip-drag {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 12px;
+  cursor: grab;
+  touch-action: none;
+}
+.pip-drag:active,
+.is-floating .canvas-wrap canvas:active {
+  cursor: grabbing;
+}
+.pip-header .icon-button {
+  color: var(--ink);
+  border-radius: 0;
+}
+.is-floating .canvas-wrap canvas {
+  cursor: grab;
+}
+.is-floating :focus-visible {
+  outline-offset: -4px;
+}
+@media (max-width: 360px) {
+  .pip-drag svg {
+    display: none;
+  }
 }
 .canvas-wrap canvas {
   display: block;

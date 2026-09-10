@@ -7,7 +7,7 @@ test('單指拖曳與雙指縮放使用原生觸控事件', async ({ page }) => 
   await page.getByLabel('選擇影片檔案').setInputFiles(path.resolve('tests/fixtures/grid.mp4'));
   await expect(page.getByRole('button', { name: '產生迷因' })).toBeEnabled();
   const canvas = page.getByTestId('preview-canvas');
-  await canvas.scrollIntoViewIfNeeded();
+  await page.getByTestId('preview-anchor').scrollIntoViewIfNeeded();
   const box = (await canvas.boundingBox())!;
   const cdp = await page.context().newCDPSession(page);
   const x = box.x + 100,

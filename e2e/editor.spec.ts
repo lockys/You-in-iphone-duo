@@ -18,7 +18,7 @@ test('匯入、同步預覽、位置縮放、產生、下載與重新編輯', as
   await page.getByLabel('Y 垂直位置').fill('-0.2');
   await page.getByLabel('開始時間', { exact: true }).fill('0.5');
   const canvas = page.getByTestId('preview-canvas');
-  await canvas.scrollIntoViewIfNeeded();
+  await page.getByTestId('preview-anchor').scrollIntoViewIfNeeded();
   await page.getByRole('button', { name: /暫停預覽|播放預覽/ }).evaluate((button: HTMLButtonElement) => {
     if (button.getAttribute('aria-label') === '播放預覽') button.click();
   });

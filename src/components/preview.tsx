@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import { Pause, Play, VolumeX, Move, RotateCcw } from 'lucide-react';
 import { useLanguage } from './language-provider';
+import FloatingPreview from './floating-preview';
 import type { ErrorCode } from '@/lib/i18n';
 import { cover, frameAt, type EditOptions, type MediaInfo, type Template } from '@/lib/composition';
 
@@ -157,46 +158,48 @@ export default function Preview({ template, source, media, options, onChange, di
   };
   return (
     <div className="preview-box">
-      <div className="canvas-wrap">
-        <canvas
-          ref={canvas}
-          width={768}
-          height={432}
-          aria-label={t('canvas')}
-          data-testid="preview-canvas"
-          onPointerDown={down}
-          onPointerMove={move}
-          onPointerUp={up}
-          onPointerCancel={up}
-          onLostPointerCapture={up}
-          className={media && !disabled ? 'draggable' : ''}
-        />
-        <video
-          ref={phone}
-          src="/templates/preview.mp4"
-          loop
-          muted
-          playsInline
-          preload="auto"
-          className="source-video"
-          onPlay={() => setPlaying(true)}
-          onPause={() => setPlaying(false)}
-          onError={() => onError('error.templateRead')}
-        />
-        {source && (
+      <FloatingPreview key={source || 'empty'} enabled={!!media && !disabled}>
+        <div className="canvas-wrap">
+          <canvas
+            ref={canvas}
+            width={768}
+            height={432}
+            aria-label={t('canvas')}
+            data-testid="preview-canvas"
+            onPointerDown={down}
+            onPointerMove={move}
+            onPointerUp={up}
+            onPointerCancel={up}
+            onLostPointerCapture={up}
+            className={media && !disabled ? 'draggable' : ''}
+          />
           <video
-            key={source}
-            ref={content}
-            src={source}
+            ref={phone}
+            src="/templates/preview.mp4"
             loop
             muted
             playsInline
             preload="auto"
             className="source-video"
-            onError={() => onError('error.previewExpired')}
+            onPlay={() => setPlaying(true)}
+            onPause={() => setPlaying(false)}
+            onError={() => onError('error.templateRead')}
           />
-        )}
-      </div>
+          {source && (
+            <video
+              key={source}
+              ref={content}
+              src={source}
+              loop
+              muted
+              playsInline
+              preload="auto"
+              className="source-video"
+              onError={() => onError('error.previewExpired')}
+            />
+          )}
+        </div>
+      </FloatingPreview>
       <div className="playback">
         <button
           type="button"
