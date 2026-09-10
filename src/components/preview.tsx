@@ -189,6 +189,7 @@ export default function Preview({ template, source, media, options, onChange, di
             <video
               key={source}
               ref={content}
+              crossOrigin="anonymous"
               src={source}
               loop
               muted

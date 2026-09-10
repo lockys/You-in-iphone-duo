@@ -98,6 +98,21 @@ it('未連接雲端儲存時回傳明確三語錯誤，並驗證 ticket 檔案�
   expect(invalid.status).toBe(400);
 });
 
+it('Blob ticket 限制 5 MB，超過一個位元組即拒絕且不建立素材', async () => {
+  const { routeCloudApi: api } = await import('../server/cloud-api');
+  const exact = await api(
+    req('/api/blob-ticket', { name: 'exact.mp4', mime: 'video/mp4', size: 5 * 1024 ** 2 }),
+  );
+  expect(exact.status).toBe(200);
+  const before = [...store.keys()].filter((key) => key.includes('/assets/'));
+  const oversized = await api(
+    req('/api/blob-ticket', { name: 'large.mp4', mime: 'video/mp4', size: 5 * 1024 ** 2 + 1 }),
+  );
+  expect(oversized.status).toBe(413);
+  expect(await oversized.json()).toMatchObject({ code: 'error.fileSize', params: { size: 5 } });
+  expect([...store.keys()].filter((key) => key.includes('/assets/'))).toEqual(before);
+});
+
 it('跨冷啟動完成真實上傳、FFmpeg 合成、私有下載及刪除，不依賴原 instance 的 Map', async () => {
   let { routeCloudApi: api } = await import('../server/cloud-api');
   const bytes = await readFile('tests/fixtures/silent.mp4');

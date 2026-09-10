@@ -6,6 +6,7 @@ import {
   validateFile,
   buildRenderSpec,
   frameAt,
+  uploadLimit,
 } from '../src/lib/composition';
 
 const rect = { x: 770, y: 215, width: 445, height: 630 };
@@ -58,6 +59,14 @@ describe('真實 cover 與編輯參數', () => {
 });
 
 describe('輸入檔案與 ffprobe', () => {
+  it.each([undefined, '', '200', 'NaN', 'Infinity', '-1', '0'])('舊有或無效設定 %s 仍限制 5 MB', (value) => {
+    expect(uploadLimit(value)).toBe(5 * 1024 ** 2);
+  });
+  it('允許部署縮小上限', () => expect(uploadLimit('2')).toBe(2 * 1024 ** 2));
+  it('5 MB 邊界可接受，超過一個位元組即拒絕', () => {
+    expect(() => validateFile('clip.mp4', 'video/mp4', 5 * 1024 ** 2)).not.toThrow();
+    expect(() => validateFile('clip.mp4', 'video/mp4', 5 * 1024 ** 2 + 1)).toThrow('影片不能超過 5 MB');
+  });
   it.each([
     ['clip.MOV', 'video/quicktime'],
     ['x.mp4', 'video/mp4'],

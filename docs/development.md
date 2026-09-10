@@ -119,7 +119,7 @@ npm run template:prepare
 
 ## 編輯與輸出行為
 
-- MP4、MOV、WebM、M4V；最多 200 MiB、5 分鐘、4K（最大 4096 × 2160 像素數）。檔名、MIME 與實際容器／視訊均驗證。
+- MP4、MOV、WebM、M4V；最多 5 MiB、5 分鐘、4K（最大 4096 × 2160 像素數）。檔名、MIME 與實際容器／視訊均驗證。
 - 匯入後顯示原始檔名、解析度、長度、大小；後端轉為低解析度 H.264 預覽，支援 HEVC、10-bit HLG/PQ、手機旋轉 metadata 與無音訊影片。
 - 桌機滑鼠拖曳；手機單指拖曳、雙指縮放；鍵盤可操作滑桿與音訊選項。縮放 1–3 倍，X/Y 是各方向可移動範圍的 -100% 至 +100%，邊界會限制住以免露底。
 - Canvas 使用與 FFmpeg 對應的 RGB 色鍵及去綠溢色公式。預覽靜音、時間同步、循環播放，可拖曳時間軸檢查手機展開後的構圖。
@@ -185,7 +185,7 @@ Vercel 的 function 請求／回應限制為 4.5 MB，且程式目錄唯讀。�
 3. 保留 `MEDIA_TEMP_DIR` 或留白均可；Vercel 自動改用作業系統 `/tmp`。若設定 `APP_ORIGIN`，Production 與 Preview 必須各自符合實際網域。
 4. 重新部署，使用小型影片完成上傳、合成、播放與下載；再用大於 4.5 MB 的素材確認直傳流程。
 
-瀏覽器先用 `/api/blob-ticket` 驗證檔名／MIME／大小，再透過 `/api/blob-upload` 取得只允許單一來源路徑的短效上傳簽章，直接串流至私有 Blob。`/api/upload` 只收小型 multipart `cloudId`；`/api/render` 收 `uploadId` 與編輯選項。使用者影片不經過 Vercel function 的上傳大小限制，仍限制 200 MiB。後端下載至私人暫存目錄後執行真正的 FFmpeg。
+瀏覽器先用 `/api/blob-ticket` 驗證檔名／MIME／大小，再透過 `/api/blob-upload` 取得只允許單一來源路徑的短效上傳簽章，直接串流至私有 Blob。`/api/upload` 只收小型 multipart `cloudId`；`/api/render` 收 `uploadId` 與編輯選項。使用者影片不經過 Vercel function 的上傳大小限制，仍限制 5 MiB。後端下載至私人暫存目錄後執行真正的 FFmpeg。
 
 資產 metadata、每 IP 配額及工作數使用 Blob 條件寫入，跨冷啟動仍有效。預覽／下載回傳 60 秒內到期的私有簽名 URL，以避免大型影片回應經過 function。原始影片不提供讀取連結。未連接儲存時回傳明確的三語 `error.cloudStorage`，不再只有 generic error。
 

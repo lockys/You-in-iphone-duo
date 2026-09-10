@@ -18,12 +18,14 @@ import {
 import Preview from './preview';
 import ResultPlayer from './result-player';
 import SharePanel from './share-panel';
+import ErrorBanner from './error-banner';
 import { brandName, repositoryUrl } from '@/lib/brand';
 import { useLanguage } from './language-provider';
 import { languageNames, locales, templateSource, type ErrorCode, type MessageKey } from '@/lib/i18n';
 import { MediaError, errorFromResponse } from '@/lib/errors';
 import {
   defaultOptions,
+  MAX_UPLOAD_BYTES,
   validateFile,
   type EditOptions,
   type MediaInfo,
@@ -48,7 +50,7 @@ export default function Editor() {
   const { locale, changeLanguage, t } = useLanguage();
   const stage = (status: string) => t(stageKeys[status] || 'working');
   const [template, setTemplate] = useState<Template>();
-  const [limit, setLimit] = useState(200 * 1024 ** 2);
+  const [limit, setLimit] = useState(MAX_UPLOAD_BYTES);
   const [storage, setStorage] = useState<'disk' | 'blob'>('disk');
   const [media, setMedia] = useState<Imported>();
   const [result, setResult] = useState<Result>();
@@ -497,25 +499,11 @@ export default function Editor() {
           </aside>
         </div>
         {error && (
-          <div className="error-banner" role="alert">
-            <div>
-              <strong>{status === 'error' ? t('stage.error') : t('attention')}</strong>
-              <p>{t(error.code, error.params)}</p>
-            </div>
-            <button
-              type="button"
-              className="icon-button"
-              aria-label={t('closeError')}
-              onClick={() => setError(null)}
-            >
-              <X size={18} />
-            </button>
-            {!template && (
-              <button type="button" onClick={loadTemplate}>
-                {t('reload')}
-              </button>
-            )}
-          </div>
+          <ErrorBanner
+            message={t(error.code, error.params)}
+            onDismiss={() => setError(null)}
+            onRetry={!template ? loadTemplate : undefined}
+          />
         )}
       </main>
       <div className="action-rail" role="group" aria-label={t('actions')} data-testid="action-rail">

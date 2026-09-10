@@ -61,6 +61,13 @@ test('真實 MP4 分享、社群下載、系統取消及錯誤處理', async ({ 
   });
   await page.getByRole('button', { name: 'Share video', exact: true }).click();
   await expect(dialog.getByRole('alert')).toContainText('Sharing did not finish');
+  const notice = dialog.getByRole('alert');
+  await expect(notice).toBeInViewport();
+  expect((await notice.boundingBox())!.y).toBeLessThan(40);
+  await page.screenshot({ path: `evidence/top-share-error-${testInfo.project.name}.png` });
+  await notice.getByRole('button', { name: 'Dismiss error' }).click();
+  await expect(notice).toHaveCount(0);
+  await expect(dialog).toBeVisible();
   for (const platform of ['Threads', 'X', 'Bluesky']) {
     const downloading = page.waitForEvent('download');
     await page.getByRole('button', { name: `Share to ${platform}`, exact: true }).click();

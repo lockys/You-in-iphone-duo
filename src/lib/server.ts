@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import Busboy from 'busboy';
-import { MediaError, type MediaInfo, type Template, validateFile } from './composition';
+import { MediaError, type MediaInfo, type Template, validateFile, uploadLimit } from './composition';
 
 // Vercel's application bundle is read-only. Never resolve its temp files under cwd,
 // even when a copied .env.example still specifies the local relative directory.
@@ -17,7 +17,7 @@ export const cacheRoot =
   process.env.VERCEL === '1'
     ? path.join(tmpdir(), 'iphone-duo-media')
     : path.resolve(process.env.MEDIA_TEMP_DIR || '.media-cache');
-export const maxBytes = Number(process.env.MAX_UPLOAD_MB || 200) * 1024 ** 2;
+export const maxBytes = uploadLimit(process.env.MAX_UPLOAD_MB);
 const ttl = Number(process.env.MEDIA_TTL_MS || 1800000);
 export type Asset = {
   id: string;
@@ -189,7 +189,8 @@ export async function receiveMultipart(request: Request, dir: string, signal: Ab
   try {
     parser = Busboy({
       headers: { 'content-type': contentType },
-      limits: { fileSize: maxBytes, files: 1, fields: 8, fieldSize: 256, parts: 9 },
+      // Busboy emits limit when the threshold is reached, even at exact EOF.
+      limits: { fileSize: maxBytes + 1, files: 1, fields: 8, fieldSize: 256, parts: 9 },
     });
   } catch {
     throw new MediaError('error.invalidForm');
@@ -203,7 +204,7 @@ export async function receiveMultipart(request: Request, dir: string, signal: Ab
         size += data.length;
       });
       stream.on('limit', () => {
-        fileError = new MediaError('error.sizeLimit', 413);
+        fileError = new MediaError('error.fileSize', 413, { size: Math.round(maxBytes / 1024 ** 2) });
       });
       writes.push(
         pipeline(stream, createWriteStream(file, { flags: 'wx', mode: 0o600 }), { signal }).catch((error) => {
