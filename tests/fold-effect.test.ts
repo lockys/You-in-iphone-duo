@@ -4,6 +4,15 @@ import { foldProjection, foldState, foldWeights } from '../src/lib/fold-effect';
 import { frameAt, parseOptions, buildRenderSpec, defaultOptions } from '../src/lib/composition';
 
 describe('folded screen projection and transition', () => {
+  it('visibly softens both rotating faces before they become fully dark', () => {
+    for (const time of [2.4, 2.8]) {
+      const state = foldState(template, frameAt(template, time), time);
+      const x = state.hinge + (state.edge - state.hinge) * 0.8;
+      const weights = foldWeights(state, x);
+      expect(weights.blur).toBeGreaterThan(0.8);
+      expect(weights.shade).toBeLessThan(0.8);
+    }
+  });
   it('keeps a landscape projection while the outer screen reveals its right half', () => {
     const rect = frameAt(template, 0);
     const projection = foldProjection(template, rect);

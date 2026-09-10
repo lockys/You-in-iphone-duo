@@ -1,6 +1,27 @@
 import { expect, test } from '@playwright/test';
 import path from 'node:path';
 
+// Normalized vertical detail separates actual blur from a darker, still-sharp grid.
+function screenDetail(canvas: HTMLCanvasElement) {
+  const ctx = canvas.getContext('2d')!;
+  const detail = (x: number) => {
+    const { data, width, height } = ctx.getImageData(x, 110, 32, 100);
+    let energy = 0;
+    let brightness = 0;
+    for (let y = 1; y < height - 1; y++) {
+      for (let col = 0; col < width; col++) {
+        const i = (y * width + col) * 4;
+        for (let c = 0; c < 3; c++) {
+          energy += Math.abs(data[i + c - width * 4] - 2 * data[i + c] + data[i + c + width * 4]);
+          brightness += data[i + c];
+        }
+      }
+    }
+    return energy / Math.max(1, brightness);
+  };
+  return { moving: detail(265), fixed: detail(484) };
+}
+
 test('fold switch changes the preview and exported video with matching screen shading', async ({
   page,
 }, testInfo) => {
@@ -27,19 +48,22 @@ test('fold switch changes the preview and exported video with matching screen sh
         .evaluate((v: HTMLVideoElement) => v.readyState),
     )
     .toBeGreaterThanOrEqual(3);
-  await page
-    .locator('video.source-video')
-    .first()
-    .evaluate((video: HTMLVideoElement) => video.pause());
+  // Use the real pause control so late metadata events cannot restart playback.
+  await page.getByRole('button', { name: 'Pause preview', exact: true }).click();
   await page.getByRole('slider', { name: 'Preview timeline' }).fill('2.9');
   await expect
     .poll(() =>
       page
         .locator('video.source-video')
         .first()
-        .evaluate((v: HTMLVideoElement) => v.currentTime),
+        .evaluate((v: HTMLVideoElement) => Math.abs(v.currentTime - 2.9)),
     )
-    .toBeCloseTo(2.9, 1);
+    .toBeLessThan(0.1);
+  // WebKit can settle a seek a couple of frames later. Compare that same frame.
+  const sampledTime = await page
+    .locator('video.source-video')
+    .first()
+    .evaluate((video: HTMLVideoElement) => video.currentTime);
   // Sample green-screen interior away from hands and bezel, on both sides of the hinge.
   const sample = async () =>
     canvas.evaluate((canvas: HTMLCanvasElement) => {
@@ -59,6 +83,8 @@ test('fold switch changes the preview and exported video with matching screen sh
     })
     .toBeGreaterThan(12);
   const enabled = await sample();
+  const previewDetail = await canvas.evaluate(screenDetail);
+  expect(previewDetail.moving).toBeLessThan(previewDetail.fixed * 0.45);
   await canvas.screenshot({ path: `evidence/fold-preview-${testInfo.project.name}.png` });
   await page.getByRole('switch', { name: 'Fold effect' }).uncheck();
   await expect.poll(async () => (await sample()).left).toBeGreaterThan(enabled.left + 10);
@@ -67,7 +93,9 @@ test('fold switch changes the preview and exported video with matching screen sh
   await expect(page.getByRole('link', { name: 'Download MP4', exact: true })).toBeVisible({ timeout: 90000 });
   const video = page.locator('.result-preview video');
   await expect(video).toBeAttached();
-  await video.evaluate(async (video: HTMLVideoElement) => {
+  await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState)).toBeGreaterThanOrEqual(2);
+  await video.evaluate(async (video: HTMLVideoElement, time: number) => {
+    video.autoplay = false;
     video.pause();
     if (video.readyState < 1)
       await new Promise<void>((resolve) =>
@@ -75,9 +103,11 @@ test('fold switch changes the preview and exported video with matching screen sh
       );
     await new Promise<void>((resolve) => {
       video.addEventListener('seeked', () => resolve(), { once: true });
-      video.currentTime = 2.9;
+      video.currentTime = time;
     });
-  });
+    video.pause();
+    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  }, sampledTime);
   const exported = await video.evaluate((video: HTMLVideoElement) => {
     const c = document.createElement('canvas');
     c.width = 768;
@@ -95,6 +125,18 @@ test('fold switch changes the preview and exported video with matching screen sh
   expect(exported.right - exported.left).toBeGreaterThan(12);
   expect(Math.abs(exported.left - enabled.left)).toBeLessThan(18);
   expect(Math.abs(exported.right - enabled.right)).toBeLessThan(18);
+  // Read the decoded MP4 through a canvas, using the same regions as the preview.
+  await video.evaluate((video: HTMLVideoElement) => {
+    const canvas = document.createElement('canvas');
+    canvas.id = 'export-blur-check';
+    canvas.width = 768;
+    canvas.height = 432;
+    canvas.hidden = true;
+    canvas.getContext('2d')!.drawImage(video, 0, 0, 768, 432);
+    document.body.append(canvas);
+  });
+  const outputDetail = await page.locator('#export-blur-check').evaluate(screenDetail);
+  expect(outputDetail.moving).toBeLessThan(outputDetail.fixed * 0.45);
   const downloadEvent = page.waitForEvent('download');
   await page.getByRole('link', { name: 'Download MP4', exact: true }).click();
   await (await downloadEvent).saveAs(`evidence/fold-${testInfo.project.name}.mp4`);
