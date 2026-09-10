@@ -161,9 +161,20 @@ main {
   margin-bottom: 16px;
 }
 .section-title h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-size: 15px;
   font-weight: 700;
   margin: 0;
+}
+.step-icon {
+  width: 28px;
+  height: 28px;
+  color: var(--accent);
+  background: var(--soft);
+  border-radius: 50%;
+  stroke-width: 1.7;
 }
 .subtle {
   color: var(--muted);

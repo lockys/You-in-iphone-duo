@@ -4,7 +4,7 @@ import { POST as render } from '../server/routes/render';
 import { GET as getTemplate } from '../server/routes/template';
 import { POST as upload } from '../server/routes/upload';
 import { GET as media, DELETE as remove } from '../server/routes/media';
-import { acquire, cacheRoot, checkOrigin, receiveMultipart, findAsset, session } from '../src/lib/server';
+import { acquire, cacheRoot, checkOrigin, receiveMultipart } from '../src/lib/server';
 import { binary, runProcess } from '../src/lib/process';
 import { locales, translate } from '../src/lib/i18n';
 let cookie = '';
@@ -31,45 +31,27 @@ beforeAll(async () => {
 });
 afterAll(() => vi.unstubAllEnvs());
 describe('原生 API 整合', () => {
-  it('5 秒影片可匯入，舊快取的超長影片不能合成', async () => {
+  it('六分鐘影片可匯入並從第 305 秒合成，API 僅宣告大小上限', async () => {
+    const config = await (await getTemplate(new Request(url + '/api/template'))).json();
+    expect(config).toMatchObject({ maxBytes: 5 * 1024 ** 2, maxDuration: null });
     const form = new FormData();
-    form.set('file', await fixture('duration-5.mp4'));
+    form.set('file', await fixture('long.mp4'));
     const imported = (await events(await upload(request('/api/upload', form)))).at(-1)!;
-    expect(imported).toMatchObject({ type: 'complete', info: { duration: 5 } });
-    const id = String(imported.uploadId);
+    expect(imported).toMatchObject({ type: 'complete', info: { duration: 360 } });
+    const ids = [String(imported.uploadId)];
     try {
       const next = new FormData();
-      next.set('uploadId', id);
-      const req = request('/api/render', next);
-      findAsset(id, session(req).owner).info!.duration = 5.04;
-      expect((await events(await render(req))).at(-1)).toMatchObject({
-        type: 'error',
-        code: 'error.duration',
-        params: { seconds: 5 },
-      });
+      next.set('uploadId', ids[0]);
+      next.set('startTime', '305');
+      const done = (await events(await render(request('/api/render', next)))).at(-1)!;
+      expect(done).toMatchObject({ type: 'complete', info: { codec: 'h264' } });
+      expect((done.info as { duration: number }).duration).toBeCloseTo(5.84, 1);
+      ids.push(String(done.resultId));
     } finally {
-      await remove(new Request(url + `/api/media/${id}`, { method: 'DELETE', headers: { cookie } }), {
-        params: Promise.resolve({ id }),
-      });
-    }
-  });
-  it.each(locales)('%s 的上傳及直接合成均拒絕 5.04 秒影片並清理暫存', async (locale) => {
-    const before = (await readdir(cacheRoot)).sort();
-    for (const [endpoint, handler] of [
-      ['/api/upload', upload],
-      ['/api/render', render],
-    ] as const) {
-      const form = new FormData();
-      form.set('file', await fixture('duration-5.04.mp4'));
-      const req = request(endpoint, form);
-      req.headers.set('x-frame-language', locale);
-      expect((await events(await handler(req))).at(-1)).toMatchObject({
-        type: 'error',
-        code: 'error.duration',
-        params: { seconds: 5 },
-        error: translate(locale, 'error.duration', { seconds: 5 }),
-      });
-      expect((await readdir(cacheRoot)).sort()).toEqual(before);
+      for (const id of ids)
+        await remove(new Request(url + `/api/media/${id}`, { method: 'DELETE', headers: { cookie } }), {
+          params: Promise.resolve({ id }),
+        });
     }
   });
   it('磁碟串流接受恰好 5 MB，超過一個位元組即拒絕', async () => {
@@ -140,9 +122,9 @@ describe('原生 API 整合', () => {
   });
   it('直接串流 multipart 真正產出可讀取、可 Range 下載的 MP4；跨使用者無法讀取', async () => {
     const form = new FormData();
-    form.set('file', await fixture());
+    form.set('file', await fixture('long.mp4'));
     form.set('audioMode', 'user');
-    form.set('startTime', '1.8');
+    form.set('startTime', '305');
     const body = await events(await render(request('/api/render', form)));
     const done = body.at(-1)!;
     expect(done, JSON.stringify(body)).toMatchObject({

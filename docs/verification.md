@@ -2,7 +2,14 @@
 
 2026-09-10，Windows、Node.js 24.15.0、Modern.js 3.9.0、React 19.3.0、TypeScript 6.0.3。前端使用 Rsbuild／Rspack；原生 FFmpeg 6.1.1、ffprobe 4.0.2。
 
-## 5 秒匯入上限
+## 目前：只限制大小與步驟圖示
+
+- 匯入保留 5 MiB 上限，取消前端、ffprobe、合成及開始時間的秒數上限。實際使用 360 秒／715,171 bytes 影片，從第 305 秒完成磁碟與跨冷啟動私有 Blob 合成。
+- 三個區塊標題加入一致的 1／2／3 SVG 步驟圖示。桌機、390px 手機及 320px 英文版已目視檢查，無橫向溢出；保留現有字體與右側操作列。
+- lint、typecheck、Modern.js production build 通過；Vitest 7 檔 85 項通過。成品的 ffprobe、完整解碼、1920×1080、H.264、yuv420p、faststart 與約 5.84 秒長度檢查通過。
+- 完整 Playwright 31 項通過（約 2.5 分鐘）；正式站實測記錄於本次 GitHub PR。
+
+## 先前：5 秒匯入上限（已取消）
 
 - 前端與原生 ffprobe 都限制匯入影片最多 5 秒；磁碟、私有 Blob、直接合成與舊來源快取皆檢查。5 MiB 大小上限維持不變。
 - 真實 5 秒影片可匯入並合成；5.04 秒會以三語頂端提示拒絕。Windows WebKit 無法讀取測試檔的本機 metadata 時由後端檢查；拒絕或取消替換影片會保留原本的編輯。

@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { rm, writeFile } from 'node:fs/promises';
-import { buildRenderSpec, MAX_UPLOAD_DURATION, MediaError, parseOptions } from '../../src/lib/composition';
+import { buildRenderSpec, MediaError, parseOptions } from '../../src/lib/composition';
 import { binary, probe, runProcess } from '../../src/lib/process';
 import {
   acquire,
@@ -40,7 +40,7 @@ export async function POST(request: Request, quotaAlreadyAcquired = false) {
           info = source.info;
         }
         if (!input) throw new MediaError('error.uploadFirst');
-        info ??= await probe(input, signal, MAX_UPLOAD_DURATION);
+        info ??= await probe(input, signal);
         const output = path.join(result.dir, 'result.mp4');
         const filter = path.join(result.dir, 'filter.txt');
         const spec = buildRenderSpec(

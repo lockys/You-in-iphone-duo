@@ -24,9 +24,8 @@ export type Template = {
   blend: number;
   keyColor: string;
 };
-export const MAX_UPLOAD_DURATION = 5;
 export const optionsSchema = z.object({
-  startTime: z.coerce.number().finite().min(0).max(MAX_UPLOAD_DURATION).default(0),
+  startTime: z.coerce.number().finite().min(0).default(0),
   scale: z.coerce.number().finite().min(1).max(3).default(1),
   offsetX: z.coerce.number().finite().min(-1).max(1).default(0),
   offsetY: z.coerce.number().finite().min(-1).max(1).default(0),
@@ -46,10 +45,8 @@ export function parseOptions(fields: Record<string, unknown>): EditOptions {
   return parsed.data;
 }
 export const MAX_UPLOAD_BYTES = 5 * 1024 ** 2;
-export function validateUploadDuration(duration: number) {
+export function validateDuration(duration: number) {
   if (!Number.isFinite(duration) || duration <= 0) throw new MediaError('error.unreadable');
-  if (duration > MAX_UPLOAD_DURATION)
-    throw new MediaError('error.duration', 400, { seconds: MAX_UPLOAD_DURATION });
 }
 export function uploadLimit(megabytes?: string) {
   const configured = Number(megabytes);
@@ -82,17 +79,16 @@ type ProbeStream = {
   side_data_list?: { rotation?: number }[];
   tags?: { rotate?: string };
 };
-export function parseProbe(
-  probe: { streams?: ProbeStream[]; format?: { duration?: string; format_name?: string } },
-  maxDuration = 300,
-): MediaInfo {
+export function parseProbe(probe: {
+  streams?: ProbeStream[];
+  format?: { duration?: string; format_name?: string };
+}): MediaInfo {
   const video = probe.streams?.find((s) => s.codec_type === 'video' && !s.disposition?.attached_pic);
   const duration = Number(probe.format?.duration ?? video?.duration);
   const width = Number(video?.width);
   const height = Number(video?.height);
   if (!video || !Number.isFinite(duration) || duration <= 0 || !width || !height)
     throw new MediaError('error.unreadable');
-  if (duration > maxDuration) throw new MediaError('error.duration', 400, { seconds: maxDuration });
   if (width * height > 4096 * 2160 || width > 4096 || height > 4096) throw new MediaError('error.resolution');
   const rotation =
     ((Number(
@@ -152,7 +148,7 @@ export function buildRenderSpec(
   output: string,
   filterPath: string,
 ) {
-  validateUploadDuration(media.duration);
+  validateDuration(media.duration);
   parseOptions(options);
   if (options.startTime >= media.duration) throw new MediaError('error.startTime');
   const transforms = template.frames.map((rect) => cover(media, rect, options));

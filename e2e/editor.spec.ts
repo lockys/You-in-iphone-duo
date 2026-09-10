@@ -2,13 +2,16 @@ import { expect, test } from '@playwright/test';
 import path from 'node:path';
 import { writeFile } from 'node:fs/promises';
 
-test('恰好 5 秒可匯入，超長影片以三語頂端提示拒絕並保留編輯', async ({ page, browserName }) => {
+test('長影片不限秒數，可選 305 秒；超大替換檔仍保留編輯並顯示三語錯誤', async ({ page }) => {
   await page.goto('/?lang=zh-Hant');
   const picker = page.locator('input[type=file]');
   await expect(picker).toBeEnabled();
-  await picker.setInputFiles(path.resolve('tests/fixtures/duration-5.mp4'));
-  await expect(page.getByRole('button', { name: '產生迷因' })).toBeEnabled();
-  await expect(page.getByText(/5.00 秒 · 160 × 90/)).toBeVisible();
+  await expect(page.locator('.step-icon')).toHaveCount(3);
+  await picker.setInputFiles(path.resolve('tests/fixtures/long.mp4'));
+  await expect(page.getByRole('button', { name: '產生迷因' })).toBeEnabled({ timeout: 60000 });
+  await expect(page.getByText(/360.00 秒 · 160 × 90/)).toBeVisible();
+  await page.locator('#start-time').fill('305');
+  await expect(page.locator('#start-time')).toHaveValue('305');
   await page.locator('#scale').fill('1.4');
   const requests: string[] = [];
   page.on('request', (request) => {
@@ -19,24 +22,26 @@ test('恰好 5 秒可匯入，超長影片以三語頂端提示拒絕並保留�
       requests.push(request.url());
   });
   for (const [locale, message] of [
-    ['zh-Hant', '影片最長可匯入 5 秒，請先剪短。'],
-    ['zh-Hans', '视频最长可导入 5 秒，请先剪短。'],
-    ['en', 'Videos can be up to 5 seconds long. Please trim yours first.'],
+    ['zh-Hant', '影片不能超過 5 MB。'],
+    ['zh-Hans', '视频不能超过 5 MB。'],
+    ['en', 'The video must be no larger than 5 MB.'],
   ]) {
     await page.getByRole('combobox').selectOption(locale);
     await page.locator('.controls-card').scrollIntoViewIfNeeded();
-    await picker.setInputFiles(path.resolve('tests/fixtures/duration-5.04.mp4'));
+    await picker.setInputFiles({
+      name: 'large.mp4',
+      mimeType: 'video/mp4',
+      buffer: Buffer.alloc(5 * 1024 ** 2 + 1),
+    });
     await expect(page.getByRole('alert')).toContainText(message);
     await expect(page.getByRole('alert')).toBeInViewport();
-    expect((await page.getByRole('alert').boundingBox())!.y).toBeLessThan(40);
     await expect(page.locator('#scale')).toHaveValue('1.4');
     await expect(page.locator('#scale')).toBeEnabled();
-    await expect(page.getByText('duration-5.mp4', { exact: true })).toBeAttached();
+    await expect(page.locator('#start-time')).toHaveValue('305');
+    await expect(page.getByText('long.mp4', { exact: true })).toBeAttached();
     await expect(picker).toHaveValue('');
   }
-  // Windows WebKit cannot read this local file's metadata; native ffprobe must still reject it.
-  if (browserName !== 'webkit') expect(requests).toEqual([]);
-  expect(requests.some((url) => new URL(url).pathname.startsWith('/api/media/'))).toBe(false);
+  expect(requests).toEqual([]);
 });
 
 test('匯入、同步預覽、位置縮放、產生、下載與重新編輯', async ({ page }, testInfo) => {
@@ -133,7 +138,7 @@ test('5 MB 上限會在影片傳輸前拒絕超大檔案', async ({ page }) => {
   });
   await page.goto('/?lang=zh-Hant');
   await expect(page.getByLabel('選擇影片檔案')).toBeEnabled();
-  await expect(page.getByText('支援 iPhone 影片，最大 5 MB・5 秒')).toBeVisible();
+  await expect(page.getByText('支援 iPhone 影片，最大 5 MB・不限秒數')).toBeVisible();
   await page.locator('.controls-card').scrollIntoViewIfNeeded();
   await page
     .getByLabel('選擇影片檔案')

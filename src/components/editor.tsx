@@ -19,6 +19,7 @@ import Preview from './preview';
 import ResultPlayer from './result-player';
 import SharePanel from './share-panel';
 import ErrorBanner from './error-banner';
+import StepIcon from './step-icon';
 import { brandName, repositoryUrl } from '@/lib/brand';
 import { useLanguage } from './language-provider';
 import { languageNames, locales, templateSource, type ErrorCode, type MessageKey } from '@/lib/i18n';
@@ -26,19 +27,16 @@ import { MediaError, errorFromResponse } from '@/lib/errors';
 import {
   defaultOptions,
   MAX_UPLOAD_BYTES,
-  MAX_UPLOAD_DURATION,
   validateFile,
-  validateUploadDuration,
   type EditOptions,
   type MediaInfo,
   type Template,
 } from '@/lib/composition';
-import { postMultipart, readVideoDuration, type ProgressEvent } from '@/lib/client-upload';
+import { postMultipart, type ProgressEvent } from '@/lib/client-upload';
 
 type Imported = { id: string; name: string; size: number; info: MediaInfo; preview: string };
 type Result = { id: string; url: string; playUrl: string };
 const stageKeys: Record<string, MessageKey> = {
-  checking: 'stage.checking',
   uploading: 'stage.uploading',
   processing: 'stage.processing',
   compositing: 'stage.compositing',
@@ -125,7 +123,7 @@ export default function Editor() {
     }
     setError(null);
     setBusy('upload');
-    setStatus('checking');
+    setStatus('uploading');
     setProgress(0);
     setElapsed(0);
     setFilename(file.name);
@@ -139,10 +137,6 @@ export default function Editor() {
       },
     };
     try {
-      const duration = await readVideoDuration(file, controller.signal);
-      controller.signal.throwIfAborted();
-      if (duration !== undefined) validateUploadDuration(duration);
-      setStatus('uploading');
       if (storage === 'blob') {
         const response = await fetch('/api/blob-ticket', {
           method: 'POST',
@@ -266,7 +260,10 @@ export default function Editor() {
           <section className="workspace" aria-label={t('workspace')}>
             <div className="import-card">
               <div className="section-title">
-                <h2>{t('importTitle')}</h2>
+                <h2>
+                  <StepIcon number={1} />
+                  {t('importTitle')}
+                </h2>
                 <span className="subtle">MP4 / MOV / WebM</span>
               </div>
               <input
@@ -310,7 +307,6 @@ export default function Editor() {
                       ? `${media.info.duration.toFixed(2)} ${t('seconds')} · ${media.info.width} × ${media.info.height} · ${(media.size / 1024 ** 2).toFixed(1)} MB`
                       : t('fileLimits', {
                           size: Math.round(limit / 1024 ** 2),
-                          seconds: MAX_UPLOAD_DURATION,
                         })}
                   </span>
                 </span>
@@ -327,7 +323,10 @@ export default function Editor() {
             <div className={`preview-card${result ? ' result-card' : ''}`}>
               {!result && (
                 <div className="section-title">
-                  <h2>{t('previewTitle')}</h2>
+                  <h2>
+                    <StepIcon number={2} />
+                    {t('previewTitle')}
+                  </h2>
                 </div>
               )}
               {result ? (
@@ -369,7 +368,10 @@ export default function Editor() {
           </section>
           <aside className="controls-card" aria-label={t('controls')}>
             <div className="section-title">
-              <h2>{t('controlsTitle')}</h2>
+              <h2>
+                <StepIcon number={3} />
+                {t('controlsTitle')}
+              </h2>
             </div>
             <fieldset disabled={disabled}>
               <div className="control-group">
