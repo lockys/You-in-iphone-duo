@@ -1,5 +1,4 @@
-import { jsonError, loadTemplate, session, maxBytes } from '@/lib/server';
-export const runtime = 'nodejs';
+import { jsonError, loadTemplate, session, maxBytes } from '../../src/lib/server';
 export async function GET(request: Request) {
   try {
     const auth = session(request);

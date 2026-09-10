@@ -1,9 +1,9 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { readFile, readdir } from 'node:fs/promises';
-import { POST as render } from '../src/app/api/render/route';
-import { GET as getTemplate } from '../src/app/api/template/route';
-import { POST as upload } from '../src/app/api/upload/route';
-import { GET as media, DELETE as remove } from '../src/app/api/media/[id]/route';
+import { POST as render } from '../server/routes/render';
+import { GET as getTemplate } from '../server/routes/template';
+import { POST as upload } from '../server/routes/upload';
+import { GET as media, DELETE as remove } from '../server/routes/media';
 import { acquire, cacheRoot, checkOrigin } from '../src/lib/server';
 import { binary, runProcess } from '../src/lib/process';
 import { locales, translate } from '../src/lib/i18n';

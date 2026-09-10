@@ -1,9 +1,5 @@
-<!-- BEGIN:nextjs-agent-rules -->
+# Project
 
-# This is NOT the Next.js you know
-
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
-
-This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
-
-<!-- END:nextjs-agent-rules -->
+This application uses Modern.js 3.9 with React, Rspack, and native FFmpeg.
+Frontend routes are in src/routes; Node APIs are Hono middleware in server/modern.server.ts.
+Run lint, typecheck, Vitest, and production Playwright flows before publishing framework or media changes.

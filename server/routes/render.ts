@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { rm, writeFile } from 'node:fs/promises';
-import { buildRenderSpec, MediaError, parseOptions } from '@/lib/composition';
-import { binary, probe, runProcess } from '@/lib/process';
+import { buildRenderSpec, MediaError, parseOptions } from '../../src/lib/composition';
+import { binary, probe, runProcess } from '../../src/lib/process';
 import {
   acquire,
   createAsset,
@@ -9,19 +9,18 @@ import {
   findAsset,
   jsonError,
   loadTemplate,
+  templatePath,
   mediaUrl,
   receiveMultipart,
   releaseAsset,
   session,
   streamTask,
   type Asset,
-} from '@/lib/server';
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
-export async function POST(request: Request) {
+} from '../../src/lib/server';
+export async function POST(request: Request, quotaAlreadyAcquired = false) {
   let release: (() => void) | undefined;
   try {
-    release = acquire(request);
+    release = quotaAlreadyAcquired ? () => {} : acquire(request);
     const auth = session(request);
     const template = await loadTemplate();
     const result = await createAsset(auth.owner);
@@ -49,7 +48,7 @@ export async function POST(request: Request) {
           template,
           options,
           input,
-          path.resolve('public/templates/8150.mp4'),
+          templatePath('8150.mp4'),
           output,
           filter,
         );

@@ -1,5 +1,6 @@
 'use client';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { Helmet } from '@modern-js/runtime/head';
 import {
   htmlLanguages,
   languageCookie,
@@ -50,12 +51,12 @@ export default function LanguageProvider({
     }),
     [locale],
   );
-  // React 19 hoists these into <head> during SSR and updates them with locale state.
-  // Keep a single owner: streamed server metadata can overwrite imperative changes.
   return (
     <Context.Provider value={value}>
-      <title>{translate(locale, 'metaTitle')}</title>
-      <meta name="description" content={translate(locale, 'metaDescription')} />
+      <Helmet>
+        <title>{translate(locale, 'metaTitle')}</title>
+        <meta name="description" content={translate(locale, 'metaDescription')} />
+      </Helmet>
       {children}
     </Context.Provider>
   );

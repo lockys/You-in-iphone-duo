@@ -17,8 +17,6 @@ import {
 } from 'lucide-react';
 import Preview from './preview';
 import ResultPlayer from './result-player';
-import Link from 'next/link';
-import Image from 'next/image';
 import SharePanel from './share-panel';
 import { brandName, repositoryUrl } from '@/lib/brand';
 import { useLanguage } from './language-provider';
@@ -51,6 +49,7 @@ export default function Editor() {
   const stage = (status: string) => t(stageKeys[status] || 'working');
   const [template, setTemplate] = useState<Template>();
   const [limit, setLimit] = useState(200 * 1024 ** 2);
+  const [storage, setStorage] = useState<'disk' | 'blob'>('disk');
   const [media, setMedia] = useState<Imported>();
   const [result, setResult] = useState<Result>();
   const [options, setOptions] = useState<EditOptions>(defaultOptions);
@@ -63,7 +62,7 @@ export default function Editor() {
   const [filename, setFilename] = useState('');
   const [downloaded, setDownloaded] = useState(false);
   const picker = useRef<HTMLInputElement>(null);
-  const active = useRef<XMLHttpRequest | null>(null);
+  const active = useRef<{ abort: () => void } | null>(null);
   const assets = useRef<{ source?: string; result?: string }>({});
   const reportError = useCallback((code: ErrorCode) => setError(new MediaError(code)), []);
   const loadTemplate = useCallback(() => {
@@ -74,6 +73,7 @@ export default function Editor() {
         setError(null);
         setTemplate(data.template);
         setLimit(data.maxBytes);
+        setStorage(data.storage === 'blob' ? 'blob' : 'disk');
       })
       .catch((e) => setError(e instanceof MediaError ? e : new MediaError('error.network')));
   }, []);
@@ -128,10 +128,43 @@ export default function Editor() {
     setFilename(file.name);
     setOptions(defaultOptions);
     const xhr = new XMLHttpRequest();
-    active.current = xhr;
     const data = new FormData();
-    data.append('file', file);
+    const controller = new AbortController();
+    active.current = {
+      abort: () => {
+        controller.abort();
+        xhr.abort();
+      },
+    };
     try {
+      if (storage === 'blob') {
+        const response = await fetch('/api/blob-ticket', {
+          method: 'POST',
+          signal: controller.signal,
+          headers: { 'Content-Type': 'application/json', 'X-Frame-Language': locale },
+          body: JSON.stringify({
+            name: file.name,
+            mime: file.type || 'application/octet-stream',
+            size: file.size,
+          }),
+        });
+        const ticket = await response.json();
+        if (!response.ok) throw errorFromResponse(ticket);
+        assets.current.source = ticket.id;
+        const { uploadPresigned } = await import('@vercel/blob/client');
+        await uploadPresigned(ticket.pathname, file, {
+          access: 'private',
+          handleUploadUrl: '/api/blob-upload',
+          clientPayload: ticket.id,
+          multipart: true,
+          contentType: file.type || 'application/octet-stream',
+          abortSignal: controller.signal,
+          onUploadProgress: ({ percentage }) =>
+            onProgress({ type: 'progress', stage: 'uploading', progress: percentage }),
+        });
+        if (controller.signal.aborted) throw new DOMException('Cancelled', 'AbortError');
+        data.append('cloudId', ticket.id);
+      } else data.append('file', file);
       const done = await postMultipart('/api/upload', data, xhr, onProgress, locale);
       const id = String(done.uploadId);
       assets.current.source = id;
@@ -141,7 +174,7 @@ export default function Editor() {
     } catch (e) {
       erase(assets.current.source);
       assets.current = {};
-      if (!(e instanceof DOMException && e.name === 'AbortError')) {
+      if (!controller.signal.aborted && !(e instanceof DOMException && e.name === 'AbortError')) {
         setError(e instanceof MediaError ? e : new MediaError('error.generic'));
         setStatus('error');
       } else setStatus('');
@@ -199,12 +232,12 @@ export default function Editor() {
   return (
     <div className="app-shell">
       <header className="site-header">
-        <Link href={`/?lang=${locale}`} className="brand" aria-label={brandName}>
-          <Image src="/brand/mark.svg" alt="" width={48} height={48} priority />
+        <a href={`/?lang=${locale}`} className="brand" aria-label={brandName}>
+          <img src="/brand/mark.svg" alt="" width={48} height={48} />
           <h1>
             <span>You, in</span> <strong>iPhoneDuo</strong>
           </h1>
-        </Link>
+        </a>
         <div className="header-actions">
           <label className="language-picker">
             <span className="sr-only">{t('language')}</span>

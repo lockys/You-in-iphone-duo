@@ -4,14 +4,19 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
 import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import Busboy from 'busboy';
 import { MediaError, type MediaInfo, type Template, validateFile } from './composition';
 
-export const cacheRoot = path.resolve(
-  /* turbopackIgnore: true */ process.env.MEDIA_TEMP_DIR || '.media-cache',
-);
+// Vercel's application bundle is read-only. Never resolve its temp files under cwd,
+// even when a copied .env.example still specifies the local relative directory.
+export const cacheRoot =
+  process.env.VERCEL === '1'
+    ? path.join(tmpdir(), 'iphone-duo-media')
+    : path.resolve(process.env.MEDIA_TEMP_DIR || '.media-cache');
 export const maxBytes = Number(process.env.MAX_UPLOAD_MB || 200) * 1024 ** 2;
 const ttl = Number(process.env.MEDIA_TTL_MS || 1800000);
 export type Asset = {
@@ -50,7 +55,7 @@ export function session(request: Request) {
 }
 export function checkOrigin(request: Request) {
   const origin = request.headers.get('origin');
-  // Next's Node adapter may normalize request.url to localhost even when a
+  // A Node adapter may normalize request.url to localhost even when a
   // browser visits 127.0.0.1. Host is the browser-visible authority; forwarded
   // headers are deliberately not trusted for this check.
   const expected = process.env.APP_ORIGIN;
@@ -249,9 +254,15 @@ export async function receiveMultipart(request: Request, dir: string, signal: Ab
   if (file && !size) throw new MediaError('error.emptyFile');
   return { fields, file, size };
 }
+export function templatePath(file: 'template.json' | '8150.mp4') {
+  return path.join(
+    process.env.TEMPLATE_DIR || fileURLToPath(new URL('../../public/templates/', import.meta.url)),
+    file,
+  );
+}
 export async function loadTemplate(): Promise<Template> {
   try {
-    return JSON.parse(await readFile(path.resolve('public/templates/template.json'), 'utf8'));
+    return JSON.parse(await readFile(templatePath('template.json'), 'utf8'));
   } catch {
     throw new MediaError('error.templateMissing', 503);
   }

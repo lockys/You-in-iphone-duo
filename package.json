@@ -4,44 +4,56 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev --hostname 127.0.0.1",
-    "build": "next build",
+    "dev": "modern dev",
+    "build": "modern build",
     "start": "node scripts/start.mjs",
     "lint": "eslint .",
-    "format": "prettier --write src scripts tests e2e *.ts *.mjs *.json README.md docs",
+    "format": "prettier --write src server scripts tests e2e *.ts *.mjs *.json README.md docs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "template:prepare": "tsx scripts/prepare-template.ts",
     "brand:prepare": "node scripts/prepare-brand.mjs",
     "test:fixtures": "tsx scripts/create-fixtures.ts",
-    "verify:video": "tsx scripts/verify-video.ts"
+    "verify:video": "tsx scripts/verify-video.ts",
+    "deploy": "node scripts/deploy.mjs",
+    "verify:deployment": "node scripts/verify-deployment.mjs"
   },
   "dependencies": {
+    "@modern-js/runtime": "3.9.0",
+    "@modern-js/server-runtime": "3.9.0",
+    "@vercel/blob": "^2.8.0",
     "busboy": "^1.6.0",
     "ffmpeg-static": "^5.3.0",
     "ffprobe-static": "^3.1.0",
+    "hono": "^4.13.7",
     "lucide-react": "^1.44.0",
-    "next": "16.3.4",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "zod": "^4.6.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@modern-js/app-tools": "3.9.0",
+    "@modern-js/tsconfig": "3.9.0",
     "@playwright/test": "^1.63.0",
+    "@rsbuild/core": "^2.2.5",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/busboy": "^1.5.4",
     "@types/node": "^22.20.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "eslint": "^9.39.5",
-    "eslint-config-next": "^16.3.4",
-    "next-rspack": "16.3.4",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "prettier": "^3.9.6",
     "sharp": "^0.35.4",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.13",
     "typescript": "^6.0.3",
+    "typescript-eslint": "^8.70.0",
     "vitest": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=22.13.0"
   }
 }
