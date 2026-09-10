@@ -51,6 +51,19 @@ test('真實 MP4 分享、社群下載、系統取消及錯誤處理', async ({ 
   await trigger.click();
   const dialog = page.getByRole('dialog', { name: 'Share your video' });
   await expect(dialog).toBeVisible();
+  expect(await dialog.evaluate((element) => element.parentElement === document.body)).toBe(true);
+  const originalViewport = page.viewportSize()!;
+  for (const viewport of [{ width: 390, height: 600 }, { width: 740, height: 360 }, originalViewport]) {
+    await page.setViewportSize(viewport);
+    const box = await dialog.boundingBox();
+    expect(box!.height).toBeGreaterThan(180);
+    expect(box!.width).toBeGreaterThan(240);
+    expect(box!.y).toBeGreaterThanOrEqual(0);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height);
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width);
+    await expect(dialog.getByRole('heading', { name: 'Share your video' })).toBeInViewport();
+  }
   await expect(page.getByRole('button', { name: 'Share video', exact: true })).toBeEnabled();
   await page.getByRole('button', { name: 'Share video', exact: true }).click();
   await expect(page.getByText('Handed off to the share sheet.')).toBeVisible();

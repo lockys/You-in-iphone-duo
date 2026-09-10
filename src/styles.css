@@ -1093,14 +1093,19 @@ a.rail-primary:hover {
   margin: 10px 0 0;
 }
 .share-dialog {
+  position: fixed;
+  inset: 16px;
+  height: fit-content;
+  flex: none;
   color: var(--ink);
   background: white;
   padding: 0;
   border: 1px solid var(--line);
   border-radius: 18px;
-  width: min(360px, calc(100vw - 108px));
-  max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 32px);
-  margin: auto max(92px, calc(env(safe-area-inset-right) + 80px)) auto auto;
+  width: min(360px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 32px);
+  margin: auto;
   overflow: auto;
   overscroll-behavior: contain;
 }
