@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useRef } from 'react';
-import { CircleAlert, X } from 'lucide-react';
 import { useLanguage } from './language-provider';
 
 export default function ErrorBanner({
@@ -20,7 +19,9 @@ export default function ErrorBanner({
   }, []);
   return (
     <div ref={notice} className="error-banner" popover="manual" role="alert" aria-atomic="true">
-      <CircleAlert size={21} aria-hidden="true" />
+      <span className="error-symbol" aria-hidden="true">
+        !
+      </span>
       <p>{message}</p>
       {onRetry && (
         <button className="error-retry" type="button" onClick={onRetry}>
@@ -28,7 +29,9 @@ export default function ErrorBanner({
         </button>
       )}
       <button type="button" className="icon-button" aria-label={t('closeError')} onClick={onDismiss}>
-        <X size={19} aria-hidden="true" />
+        <span className="error-close" aria-hidden="true">
+          ×
+        </span>
       </button>
     </div>
   );

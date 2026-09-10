@@ -638,10 +638,27 @@ progress::-moz-progress-bar {
   font-size: 14px;
   overflow-wrap: anywhere;
 }
-.error-banner > svg,
+.error-symbol,
 .error-banner button {
   flex-shrink: 0;
   color: inherit;
+}
+.error-symbol {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  font:
+    700 13px / 1 system-ui,
+    sans-serif;
+}
+.error-close {
+  display: block;
+  font:
+    400 27px / 1 system-ui,
+    sans-serif;
 }
 .error-banner button {
   min-width: 44px;
