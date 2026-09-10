@@ -265,6 +265,42 @@ main {
   background: #eff1f3;
   overflow: hidden;
 }
+.video-stage {
+  position: relative;
+}
+.video-loader {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgb(245 244 250 / 88%);
+  color: var(--ink);
+  font-size: 14px;
+  pointer-events: none;
+}
+.demo-preview video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.demo-play {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 56px;
+  height: 56px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: white;
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+}
 .preview-anchor {
   aspect-ratio: 16 / 9;
 }

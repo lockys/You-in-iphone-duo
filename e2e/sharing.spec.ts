@@ -80,7 +80,8 @@ test('真實 MP4 分享、社群下載、系統取消及錯誤處理', async ({ 
   const download = await downloading;
   expect(await download.failure()).toBeNull();
   expect(download.suggestedFilename()).toBe('phone-meme.mp4');
-  for (const platform of ['Threads', 'X', 'Bluesky']) {
+  await expect(dialog.locator('.social-buttons a')).toHaveCount(2);
+  for (const platform of ['Threads', 'X']) {
     const link = page.getByRole('link', { name: `Share to ${platform}`, exact: true });
     const href = (await link.getAttribute('href'))!;
     expect(decodeURIComponent(href)).toContain('#uiniphoneduo');
@@ -90,7 +91,7 @@ test('真實 MP4 分享、社群下載、系統取消及錯誤處理', async ({ 
     await link.click();
     await expect(dialog.getByRole('status')).toContainText(`to your ${platform} post`);
   }
-  expect(opened).toHaveLength(3);
+  expect(opened).toHaveLength(2);
   expect(opened.join(' ')).not.toMatch(/access=|api\/media|localhost|127\.0\.0\.1/);
   await page.screenshot({ path: `evidence/share-${testInfo.project.name}.png`, fullPage: true });
   await page.keyboard.press('Escape');

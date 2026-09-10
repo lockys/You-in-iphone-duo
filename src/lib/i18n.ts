@@ -43,6 +43,7 @@ export const messages = {
   replace: ['更換影片', '更换视频', 'Replace video'],
   previewTitle: ['看看效果', '看看效果', 'See it in action'],
   loadingTemplate: ['正在載入模板…', '正在加载模板…', 'Loading template…'],
+  loadingVideo: ['正在載入影片…', '正在加载视频…', 'Loading video…'],
   source: ['模板影片來源', '模板视频来源', 'Template video source'],
   sourceLink: ['在新分頁開啟影片來源', '在新标签页打开视频来源', 'Open video source in a new tab'],
   privacy: [

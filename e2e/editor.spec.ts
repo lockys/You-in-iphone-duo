@@ -2,6 +2,67 @@ import { expect, test } from '@playwright/test';
 import path from 'node:path';
 import { writeFile } from 'node:fs/promises';
 
+test('影片載入時在容器內顯示 loader，播放後移除', async ({ page }) => {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/templates/demo.mp4', async (route) => {
+    await gate;
+    await route.continue();
+  });
+  try {
+    await page.goto('/?lang=en', { waitUntil: 'domcontentloaded' });
+    const loader = page.locator('.demo-preview .video-loader');
+    await expect(loader).toBeVisible();
+    await expect(loader).toHaveText('Loading video…');
+    release();
+    await page.getByTestId('demo-video').scrollIntoViewIfNeeded();
+    await expect(loader).toHaveCount(0);
+    await expect
+      .poll(() => page.getByTestId('demo-video').evaluate((v: HTMLVideoElement) => v.currentTime))
+      .toBeGreaterThan(0.1);
+  } finally {
+    release();
+  }
+});
+
+test('初始預覽不等待模板 API，靜音行內自動播放且可暫停', async ({ page }) => {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/api/template', async (route) => {
+    await gate;
+    await route.continue();
+  });
+  try {
+    await page.goto('/?lang=en', { waitUntil: 'domcontentloaded' });
+    const demo = page.getByTestId('demo-video');
+    await demo.scrollIntoViewIfNeeded();
+    await expect(demo).toHaveAttribute('poster', '/templates/demo-poster.jpg');
+    await expect.poll(() => demo.evaluate((v: HTMLVideoElement) => v.currentTime)).toBeGreaterThan(0.1);
+    expect(await demo.evaluate((v: HTMLVideoElement) => v.muted && v.playsInline && !v.paused)).toBe(true);
+    await page.locator('.demo-preview .playback button').click();
+    expect(await demo.evaluate((v: HTMLVideoElement) => v.paused)).toBe(true);
+    await page.locator('.demo-play').click();
+    await expect.poll(() => demo.evaluate((v: HTMLVideoElement) => v.paused)).toBe(false);
+  } finally {
+    release();
+  }
+});
+
+test('減少動態效果時顯示海報並允許手動播放', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/?lang=en');
+  const demo = page.getByTestId('demo-video');
+  await demo.scrollIntoViewIfNeeded();
+  await expect(page.locator('.demo-play')).toBeVisible();
+  expect(await demo.evaluate((v: HTMLVideoElement) => v.paused)).toBe(true);
+  await page.locator('.demo-play').click();
+  await expect.poll(() => demo.evaluate((v: HTMLVideoElement) => v.currentTime)).toBeGreaterThan(0.1);
+});
+
 test('長影片不限秒數，可選 305 秒；超大替換檔仍保留編輯並顯示三語錯誤', async ({ page }) => {
   await page.goto('/?lang=zh-Hant');
   const picker = page.locator('input[type=file]');
@@ -145,13 +206,11 @@ test('20 MB 上限會在影片傳輸前拒絕超大檔案', async ({ page }) => 
   await expect(page.getByLabel('選擇影片檔案')).toBeEnabled();
   await expect(page.getByText('支援 iPhone 影片，最大 20 MB・不限秒數')).toBeVisible();
   await page.locator('.controls-card').scrollIntoViewIfNeeded();
-  await page
-    .getByLabel('選擇影片檔案')
-    .setInputFiles({
-      name: 'too-large.mp4',
-      mimeType: 'video/mp4',
-      buffer: Buffer.alloc(20 * 1024 ** 2 + 1),
-    });
+  await page.getByLabel('選擇影片檔案').setInputFiles({
+    name: 'too-large.mp4',
+    mimeType: 'video/mp4',
+    buffer: Buffer.alloc(20 * 1024 ** 2 + 1),
+  });
   await expect(page.locator('.error-banner')).toContainText('影片不能超過 20 MB');
   await expect(page.locator('.error-banner')).toBeInViewport();
   const notice = (await page.locator('.error-banner').boundingBox())!;

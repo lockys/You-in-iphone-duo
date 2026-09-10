@@ -16,6 +16,8 @@ import {
   X,
 } from 'lucide-react';
 import Preview from './preview';
+import DemoPreview from './demo-preview';
+import VideoLoader from './video-loader';
 import ResultPlayer from './result-player';
 import SharePanel from './share-panel';
 import ErrorBanner from './error-banner';
@@ -329,24 +331,29 @@ export default function Editor() {
                   </h2>
                 </div>
               )}
-              {result ? (
-                <ResultPlayer url={result.playUrl} onError={reportError} />
-              ) : template ? (
-                <Preview
-                  template={template}
-                  source={media?.preview}
-                  media={media?.info}
-                  options={options}
-                  onChange={setOptions}
-                  disabled={!!busy}
-                  onError={reportError}
-                />
-              ) : (
-                <div className="template-loading">
-                  <LoaderCircle className="spin" />
-                  {t('loadingTemplate')}
-                </div>
-              )}
+              <div className="video-stage" aria-busy={!!busy}>
+                {result ? (
+                  <ResultPlayer url={result.playUrl} onError={reportError} />
+                ) : !media ? (
+                  <DemoPreview />
+                ) : template ? (
+                  <Preview
+                    template={template}
+                    source={media?.preview}
+                    media={media?.info}
+                    options={options}
+                    onChange={setOptions}
+                    disabled={!!busy}
+                    onError={reportError}
+                  />
+                ) : (
+                  <div className="template-loading">
+                    <LoaderCircle className="spin" />
+                    {t('loadingTemplate')}
+                  </div>
+                )}
+                {busy && <VideoLoader label={stage(status)} />}
+              </div>
             </div>
             <p className="source-credit">
               <span>{t('source')}:</span>

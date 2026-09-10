@@ -40,7 +40,7 @@
 - [x] 三語介面、來源標示、不重載的語言切換及真實 API 錯誤翻譯。
 - [x] You, in iPhoneDuo 名稱、可編輯 SVG Logo、精簡介面、GitHub 原始碼連結。
 - [x] 閱讀 Apple 指南，加入固定右側操作列、安全空間、尺寸切換時保留狀態，局部控制留在內容旁。
-- [x] 系統 MP4 檔案分享，Threads／X／Bluesky 發文 intent 與下載後手動附檔。
+- [x] 系統 MP4 檔案分享，Threads／X 發文 intent 與下載後手動附檔。
 - [x] 開發／正式版改用 Rspack，修正 standalone 追蹤缺檔，驗證真實影片流程。
 - [x] 分享驗證、右側位置與窄螢幕測試、WebKit dialog 焦點修正。
 

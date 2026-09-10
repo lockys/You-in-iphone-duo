@@ -1,7 +1,7 @@
 import { brandName } from './brand';
 import { MediaError } from './errors';
 
-export const socialPlatforms = ['Threads', 'X', 'Bluesky'] as const;
+export const socialPlatforms = ['Threads', 'X'] as const;
 export type SocialPlatform = (typeof socialPlatforms)[number];
 export function shareCaption(text = '') {
   return `${text.replace(/#uiniphoneduo\b/gi, '').trim()} #uiniphoneduo`.trim();
@@ -12,7 +12,6 @@ export function socialIntent(platform: SocialPlatform, text: string) {
     {
       Threads: 'https://www.threads.com/intent/post',
       X: 'https://x.com/intent/tweet',
-      Bluesky: 'https://bsky.app/intent/compose',
     }[platform],
   );
   url.searchParams.set('text', shareCaption(text));

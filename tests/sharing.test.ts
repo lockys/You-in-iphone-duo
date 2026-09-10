@@ -33,7 +33,7 @@ describe('影片分享邊界', () => {
     expect([...url.searchParams.keys()]).toEqual(['text']);
     expect(url.searchParams.get('text')).toBe(caption + ' #uiniphoneduo');
     expect(url.href).not.toMatch(/localhost|127\.0\.0\.1|access=|api\/media/);
-    expect(url.hostname).toBe({ Threads: 'www.threads.com', X: 'x.com', Bluesky: 'bsky.app' }[platform]);
+    expect(url.hostname).toBe({ Threads: 'www.threads.com', X: 'x.com' }[platform]);
   });
   it('系統分享傳遞 MP4 檔案，不傳遞短效下載連結', () => {
     const file = new File(['video'], 'iphone-duo.mp4', { type: 'video/mp4' });

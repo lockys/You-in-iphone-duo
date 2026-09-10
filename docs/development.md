@@ -53,7 +53,7 @@ npm start
 完成後點右側「分享」：
 
 - 支援檔案分享的 HTTPS／localhost 瀏覽器，可直接呼叫系統分享選單，把真正的 MP4 交給已安裝且接受影片的 App。預先準備成品以保留 iOS 點擊授權；取消選單不顯示錯誤。
-- 先點「下載 MP4」，再選 Threads、X、Bluesky 開啟貼文，避免 Android 在同一次點擊中攔截下載或彈出視窗。Android 使用 `intent://` 搭配 HTTPS fallback；其他裝置使用 HTTPS web intent。系統分享與社群文案均帶入 `#uiniphoneduo`。**URL scheme 不會自動附加本機影片**，需在貼文中選擇剛下載的 MP4；能否開啟 App 取決於該 App 的連結處理支援。依據 [Chrome Android Intent 文件](https://developer.chrome.com/docs/android/intents) 實作。網站不會代替使用者發布貼文。
+- 先點「下載 MP4」，再選 Threads、X 開啟貼文，避免 Android 在同一次點擊中攔截下載或彈出視窗。Android 使用 `intent://` 搭配 HTTPS fallback；其他裝置使用 HTTPS web intent。系統分享與社群文案均帶入 `#uiniphoneduo`。**URL scheme 不會自動附加本機影片**，需在貼文中選擇剛下載的 MP4；能否開啟 App 取決於該 App 的連結處理支援。依據 [Chrome Android Intent 文件](https://developer.chrome.com/docs/android/intents) 實作。網站不會代替使用者發布貼文。
 - 不會把 localhost 或帶權杖的私人影片網址放進社群文案。不建立公開成品託管服務。非安全的 LAN HTTP 瀏覽器通常只能使用下載後手動分享。
 - 只有支援系統檔案分享時，才把最長約六秒的成品暫存於瀏覽器記憶體；限制 64 MiB、30 秒，失敗可重試，離開或重新編輯時取消準備並釋放檔案參照。原始上傳與後端下載仍是串流。
 
@@ -123,6 +123,7 @@ npm run template:prepare
 - 匯入後顯示原始檔名、解析度、長度、大小；後端轉為低解析度 H.264 預覽，支援 HEVC、10-bit HLG/PQ、手機旋轉 metadata 與無音訊影片。
 - 桌機滑鼠拖曳；手機單指拖曳、雙指縮放；鍵盤可操作滑桿與音訊選項。縮放 1–3 倍，X/Y 是各方向可移動範圍的 -100% 至 +100%，邊界會限制住以免露底。
 - Canvas 使用與 FFmpeg 對應的 RGB 色鍵及去綠溢色公式。預覽靜音、時間同步、循環播放，可拖曳時間軸檢查手機展開後的構圖。
+- 首頁尚未匯入影片時，直接播放 `demo.mp4`（約 199 KB、無音軌 H.264、faststart），以 JPEG 海報預先顯示首格，不等待 `/api/template` 或執行 Canvas 色鍵。支援 Safari 行內靜音播放、返回頁面後恢復，以及 autoplay 被拒時的手動播放；尊重減少動態效果設定。`npm run template:prepare` 會一併重新產生 demo 與海報。WebKit 自動化測試不等同 iPhone 實機／低耗電模式驗證。
 - 正式輸出為白底 → 使用者影片 → 去綠模板。使用固定尺寸的 perspective 座標轉換實作動態 cover，避免 FFmpeg overlay 對動態尺寸的截斷；最終影像保留來源比例。
 - 來源短於模板時，從指定時間開始，抵達來源結尾後從頭循環。長於模板時則取指定開始時間後的模板長度。
 - 模板音訊／來源音訊／靜音三選一。音訊不足會補靜音；來源音訊隨短片循環，沒有音訊時輸出有效的靜音 MP4。
@@ -248,7 +249,7 @@ Vitest 涵蓋 cover／縮放／位置、數值驗證、MIME／副檔名／大小
 
 Playwright 覆蓋桌機 Chromium、Android 尺寸 Chromium、iPhone 尺寸 WebKit 的匯入、調整、真實產生、播放、下載與重新編輯，以及錯誤／取消；原生單指／雙指手勢使用 Chromium CDP 驗證。
 
-另測試 320–1440px 與橫向尺寸的右側浮動列、安全間距、44px 以上點擊範圍、狀態保留、GitHub 連結、分享 dialog 焦點、真實 MP4 檔案分享、三個社群 intent、下載及取消／失敗提示。
+另測試 320–1440px 與橫向尺寸的右側浮動列、安全間距、44px 以上點擊範圍、狀態保留、GitHub 連結、分享 dialog 焦點、真實 MP4 檔案分享、兩個社群 intent、下載及取消／失敗提示。
 
 多語系測試另涵蓋三種語言的伺服器 HTML、來源連結、Cookie 偏好、完整英譯、前後端錯誤、切換時保留編輯值、合成中及完成後切換語言，並實際播放、下載 MP4。`npm test -- tests/i18n.test.ts` 可單獨檢查語言字典與錯誤參數。
 
