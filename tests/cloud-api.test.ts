@@ -113,9 +113,9 @@ it('Blob ticket 限制 5 MB，超過一個位元組即拒絕且不建立素材',
   expect([...store.keys()].filter((key) => key.includes('/assets/'))).toEqual(before);
 });
 
-it('5 秒影片跨冷啟動完成真實上傳、FFmpeg 合成、私有下載及刪除', async () => {
+it('六分鐘影片跨冷啟動完成真實上傳、FFmpeg 合成、私有下載及刪除', async () => {
   let { routeCloudApi: api } = await import('../server/cloud-api');
-  const bytes = await readFile('tests/fixtures/duration-5.mp4');
+  const bytes = await readFile('tests/fixtures/long.mp4');
   const ticket = await (
     await api(req('/api/blob-ticket', { name: 'silent.mp4', mime: 'video/mp4', size: bytes.length }))
   ).json();
@@ -152,13 +152,14 @@ it('5 秒影片跨冷啟動完成真實上傳、FFmpeg 合成、私有下載及�
   expect(uploaded.at(-1), JSON.stringify(uploaded)).toMatchObject({
     type: 'complete',
     uploadId: ticket.id,
-    info: { codec: 'h264', duration: 5 },
+    info: { codec: 'h264', duration: 360 },
   });
   vi.resetModules();
   ({ routeCloudApi: api } = await import('../server/cloud-api'));
   const edit = new FormData();
   edit.set('uploadId', ticket.id);
   edit.set('audioMode', 'mute');
+  edit.set('startTime', '305');
   const rendered = await events(await api(req('/api/render', edit)));
   const done = rendered.at(-1);
   expect(done, JSON.stringify(rendered)).toMatchObject({
@@ -202,32 +203,6 @@ it('5 秒影片跨冷啟動完成真實上傳、FFmpeg 合成、私有下載及�
   expect(deleted.status).toBe(204);
   expect((await api(req(done.url))).status).toBe(404);
   expect([...store.keys()].some((key) => key.endsWith(`${done.resultId}/result.mp4`))).toBe(false);
-});
-
-it('雲端也會以 ffprobe 拒絕超過 5 秒的影片並清除原始 Blob', async () => {
-  const { routeCloudApi: api } = await import('../server/cloud-api');
-  const bytes = await readFile('tests/fixtures/duration-5.04.mp4');
-  const ticket = await (
-    await api(
-      req('/api/blob-ticket', {
-        name: 'long.mp4',
-        mime: 'video/mp4',
-        size: bytes.length,
-      }),
-    )
-  ).json();
-  store.set(ticket.pathname, { bytes, etag: 'long-source', uploadedAt: new Date() });
-  const form = new FormData();
-  form.set('cloudId', ticket.id);
-  expect((await events(await api(req('/api/upload', form)))).at(-1)).toMatchObject({
-    type: 'error',
-    code: 'error.duration',
-    params: { seconds: 5 },
-  });
-  expect(store.has(ticket.pathname)).toBe(false);
-  expect([...store.keys()].some((key) => key.includes(ticket.id) && key.endsWith('.mp4'))).toBe(false);
-  const { getCloudAsset } = await import('../server/cloud-store');
-  await expect(getCloudAsset(ticket.id, 'a'.repeat(64))).rejects.toMatchObject({ code: 'error.expired' });
 });
 
 it('損壞影片不留下原始 Blob，缺少簽章設定與清理未授權皆明確拒絕', async () => {

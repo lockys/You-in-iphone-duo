@@ -20,7 +20,7 @@
 ## 3. 安全串流 API
 
 - [x] POST /api/upload 處理媒體驗證與必要的預覽轉碼；POST /api/render 接受 multipart file 或已驗證的 uploadId 與編輯參數。
-- [x] 5 MiB、5 秒、解析度上限；隨機目錄及所有權 token；同站檢查；IP/全域速率與並行上限；timeout、取消終止子程序；回收來源、中間與過期成品。
+- [x] 5 MiB、無秒數上限、解析度上限；隨機目錄及所有權 token；同站檢查；IP/全域速率與並行上限；timeout、取消終止子程序；回收來源、中間與過期成品。
 - [x] POST 回傳 NDJSON 階段與進度；GET 私人成品支援 Range；DELETE 取消/刪除；不記錄媒體內容。
 
 ## 4. 行動編輯器

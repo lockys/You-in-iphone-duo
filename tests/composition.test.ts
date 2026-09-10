@@ -7,7 +7,7 @@ import {
   buildRenderSpec,
   frameAt,
   uploadLimit,
-  validateUploadDuration,
+  validateDuration,
 } from '../src/lib/composition';
 
 const rect = { x: 770, y: 215, width: 445, height: 630 };
@@ -60,23 +60,17 @@ describe('真實 cover 與編輯參數', () => {
 });
 
 describe('輸入檔案與 ffprobe', () => {
-  it('接受恰好 5 秒，超過上限即拒絕', () => {
-    expect(() => validateUploadDuration(5)).not.toThrow();
-    expect(() => validateUploadDuration(5.001)).toThrow('影片最長可匯入 5 秒');
-  });
-  it('非常長的匯入影片仍回傳 5 秒上限', () => {
-    expect(() =>
-      parseProbe(
-        {
-          streams: [{ codec_type: 'video', width: 160, height: 90 }],
-          format: { duration: '301' },
-        },
-        5,
-      ),
-    ).toThrow('影片最長可匯入 5 秒');
+  it.each([5, 5.04, 301, 360, 7200])('不以秒數拒絕有效影片 %s', (duration) => {
+    expect(() => validateDuration(duration)).not.toThrow();
+    expect(
+      parseProbe({
+        streams: [{ codec_type: 'video', width: 160, height: 90 }],
+        format: { duration: String(duration) },
+      }).duration,
+    ).toBe(duration);
   });
   it.each([0, -1, NaN, Infinity])('拒絕無效長度 %s', (duration) => {
-    expect(() => validateUploadDuration(duration)).toThrow();
+    expect(() => validateDuration(duration)).toThrow();
   });
   it('模板與成品的 ffprobe 不受匯入上限影響', () => {
     expect(
@@ -124,19 +118,24 @@ describe('輸入檔案與 ffprobe', () => {
     });
     expect(info).toMatchObject({ width: 1080, height: 1920, rotation: 90, hasAudio: false });
   });
-  it('拒絕超長與非影片來源', () => {
+  it('拒絕沒有視訊的來源', () => {
     expect(() => parseProbe({ streams: [], format: { duration: '2' } })).toThrow();
-    expect(() =>
-      parseProbe({ streams: [{ codec_type: 'video', width: 10, height: 10 }], format: { duration: '301' } }),
-    ).toThrow();
   });
 });
 
 describe('FFmpeg 原生輸出', () => {
-  it('合成也拒絕舊快取中超過 5 秒的來源', () => {
-    expect(() =>
-      buildRenderSpec({ ...meta, duration: 5.04 }, template, options, 'in', 'tpl', 'out', 'graph'),
-    ).toThrow('影片最長可匯入 5 秒');
+  it('可從長影片第 305 秒開始，輸出仍以模板長度為準', () => {
+    const spec = buildRenderSpec(
+      { ...meta, duration: 360 },
+      template,
+      { ...options, startTime: 305 },
+      'in',
+      'tpl',
+      'out',
+      'graph',
+    );
+    expect(spec.args.join(' ')).toContain('-ss 305');
+    expect(spec.args.join(' ')).toContain('-t 5.824');
   });
   it('短影片循環，從指定秒數開始', () => {
     const spec = buildRenderSpec(

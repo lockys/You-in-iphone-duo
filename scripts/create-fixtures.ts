@@ -3,6 +3,23 @@ import { binary, runProcess } from '../src/lib/process';
 async function main() {
   await mkdir('tests/fixtures', { recursive: true });
   const base = ['-v', 'error', '-y'];
+  await runProcess(binary('ffmpeg'), [
+    ...base,
+    '-f',
+    'lavfi',
+    '-i',
+    'testsrc2=size=160x90:rate=1',
+    '-t',
+    '360',
+    '-c:v',
+    'libx264',
+    '-pix_fmt',
+    'yuv420p',
+    '-an',
+    '-movflags',
+    '+faststart',
+    'tests/fixtures/long.mp4',
+  ]);
   for (const duration of [5, 5.04]) {
     await runProcess(binary('ffmpeg'), [
       ...base,
