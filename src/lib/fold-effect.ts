@@ -41,10 +41,10 @@ export function foldWeights(state: FoldState, x: number) {
   const edge = clamp(((x - state.hinge) * state.direction) / state.halfWidth);
   const motion = inside ? state.motion : 0;
   // Blur originates at the inner display's center (the hinge) and spreads
-  // across both halves. Shadow still belongs only to the rotating face.
-  // A soft moving boundary avoids a uniform blur or an abrupt half-screen seam.
+  // only toward the left edge. The right display stays sharp throughout.
+  // Shadow still belongs only to the rotating face.
   const distance = Math.abs(x - state.hinge) / state.halfWidth;
-  const blurMotion = state.direction < 0 || inside ? state.motion : 0;
+  const blurMotion = x <= state.hinge ? state.motion : 0;
   const blur = smooth(blurMotion * 3) * smooth((blurMotion * 1.15 - distance) / 0.3);
   return {
     blur,

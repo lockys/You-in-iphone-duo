@@ -19,7 +19,8 @@ function screenDetail(canvas: HTMLCanvasElement) {
     }
     return energy / Math.max(1, brightness);
   };
-  return { moving: detail(365), fixed: detail(520) };
+  // Keep both sample rectangles wholly on their side of the tracked hinge.
+  return { moving: detail(310), fixed: detail(405) };
 }
 
 test('fold switch changes the preview and exported video with matching screen shading', async ({
