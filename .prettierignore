@@ -1,0 +1,9 @@
+node_modules
+.next
+evidence
+public
+test-results
+playwright-report
+.media-cache*
+tools
+package-lock.json

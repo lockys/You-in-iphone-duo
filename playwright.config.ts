@@ -1,0 +1,35 @@
+import { defineConfig, devices } from '@playwright/test';
+export default defineConfig({
+  testDir: './e2e',
+  timeout: 120000,
+  expect: { timeout: 20000 },
+  fullyParallel: false,
+  workers: 1,
+  reporter: [['list'], ['html', { open: 'never' }]],
+  use: {
+    baseURL: 'http://127.0.0.1:3100',
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+  },
+  projects: [
+    {
+      name: 'desktop-chromium',
+      testMatch: ['editor.spec.ts', 'i18n.spec.ts', 'duo.spec.ts', 'sharing.spec.ts'],
+      use: { ...devices['Desktop Chrome'], channel: 'chromium', viewport: { width: 1440, height: 1080 } },
+    },
+    { name: 'mobile-chromium', use: { ...devices['Pixel 7'], channel: 'chromium' } },
+    {
+      name: 'mobile-webkit',
+      testMatch: ['editor.spec.ts', 'i18n.spec.ts', 'duo.spec.ts', 'sharing.spec.ts'],
+      use: { ...devices['iPhone 13'], browserName: 'webkit' },
+    },
+  ],
+  webServer: {
+    command: 'npm run start -- --port 3100',
+    url: 'http://127.0.0.1:3100',
+    reuseExistingServer: false,
+    timeout: 120000,
+    env: { RATE_LIMIT_MAX: '200', MEDIA_TEMP_DIR: '.media-cache-e2e' },
+  },
+});

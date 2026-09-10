@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+.env*
+.media-cache
+.media-cache*
+tools
+evidence
+test-results
+playwright-report
+8150.mp4
+tests/fixtures

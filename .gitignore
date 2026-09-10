@@ -1,0 +1,12 @@
+node_modules/
+.next/
+.env*
+!.env.example
+.media-cache/
+.media-cache-e2e/
+test-results/
+playwright-report/
+*.tsbuildinfo
+tools/
+evidence/
+.media-cache*/

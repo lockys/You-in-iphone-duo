@@ -1,0 +1,99 @@
+import path from 'node:path';
+import { binary, probe, runProcess } from '@/lib/process';
+import { MediaError } from '@/lib/composition';
+import {
+  acquire,
+  createAsset,
+  dispose,
+  jsonError,
+  mediaUrl,
+  receiveMultipart,
+  releaseAsset,
+  session,
+  streamTask,
+} from '@/lib/server';
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export async function POST(request: Request) {
+  let release: (() => void) | undefined;
+  try {
+    release = acquire(request);
+    const auth = session(request);
+    const asset = await createAsset(auth.owner);
+    return streamTask(request, auth.cookie, async (send, signal) => {
+      try {
+        const upload = await receiveMultipart(request, asset.dir, signal);
+        if (!upload.file) throw new MediaError('error.chooseFile');
+        send({ type: 'progress', stage: 'processing', progress: 5 });
+        asset.info = await probe(upload.file, signal);
+        asset.size = upload.size;
+        asset.preview = path.join(asset.dir, 'preview.mp4');
+        const tone = asset.info.hdr
+          ? 'zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,'
+          : '';
+        await runProcess(
+          binary('ffmpeg'),
+          [
+            '-v',
+            'error',
+            '-y',
+            '-threads',
+            '2',
+            '-protocol_whitelist',
+            'file,pipe',
+            '-i',
+            asset.file,
+            '-map',
+            '0:v:0',
+            '-vf',
+            `${tone}scale=${asset.info.width}:${asset.info.height},setsar=1,scale=w='min(960,iw)':h='min(720,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2,fps=30`,
+            '-an',
+            '-c:v',
+            'libx264',
+            '-threads',
+            '2',
+            '-preset',
+            'ultrafast',
+            '-crf',
+            '26',
+            '-pix_fmt',
+            'yuv420p',
+            '-movflags',
+            '+faststart',
+            '-map_metadata',
+            '-1',
+            '-progress',
+            'pipe:1',
+            asset.preview,
+          ],
+          {
+            signal,
+            onProgress: (seconds) =>
+              send({
+                type: 'progress',
+                stage: 'processing',
+                progress: Math.min(98, 5 + (90 * seconds) / asset.info!.duration),
+              }),
+          },
+        );
+        send({
+          type: 'complete',
+          uploadId: asset.id,
+          info: asset.info,
+          size: asset.size,
+          previewUrl: mediaUrl(asset, true),
+        });
+      } catch (error) {
+        await dispose(asset);
+        throw error;
+      } finally {
+        if (signal.aborted) await dispose(asset);
+        await releaseAsset(asset);
+        release?.();
+      }
+    });
+  } catch (error) {
+    release?.();
+    return jsonError(error, request);
+  }
+}

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680"><rect width="1200" height="680" fill="#f8f7fa"/><text x="64" y="82" font-family="Arial,sans-serif" font-size="36" fill="#272333">You, in <tspan font-weight="700">iPhoneDuo</tspan></text><path d="M64 116h1072" stroke="#dcd8e4"/><g transform="translate(94 184) scale(2.5)">
+  <path d="M7 16a8 8 0 0 1 8-8h14v48H15a8 8 0 0 1-8-8V16Z" fill="#272333"/>
+  <path d="M35 8h14a8 8 0 0 1 8 8v32a8 8 0 0 1-8 8H35V8Z" fill="#7254d8"/>
+  <path d="m23 23 20 9-20 9V23Z" fill="#fff"/>
+  <path d="M32 5v54" stroke="#fff" stroke-width="3"/>
+  <path d="M15 14h6M43 50h6" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+
+</g><g transform="translate(452 184) scale(2.5)">
+  <path d="M7 16a8 8 0 0 1 8-8h14v48H15a8 8 0 0 1-8-8V16ZM35 8h14a8 8 0 0 1 8 8v32a8 8 0 0 1-8 8H35V8Z" fill="#272333"/>
+  <path d="m23 23 20 9-20 9V23Z" fill="#fff"/>
+  <path d="M32 5v54" stroke="#fff" stroke-width="3"/>
+  <path d="M15 14h6M43 50h6" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+
+</g><rect x="836" y="181" width="174" height="174" rx="38" fill="white"/><g transform="translate(859 204) scale(2)">
+  <path d="M7 16a8 8 0 0 1 8-8h14v48H15a8 8 0 0 1-8-8V16Z" fill="#272333"/>
+  <path d="M35 8h14a8 8 0 0 1 8 8v32a8 8 0 0 1-8 8H35V8Z" fill="#7254d8"/>
+  <path d="m23 23 20 9-20 9V23Z" fill="#fff"/>
+  <path d="M32 5v54" stroke="#fff" stroke-width="3"/>
+  <path d="M15 14h6M43 50h6" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+
+</g><g font-family="Arial,sans-serif" font-size="18" fill="#66616e"><text x="119" y="396">Primary mark</text><text x="468" y="396">Monochrome</text><text x="887" y="396">App icon</text></g><g transform="translate(70 500)">
+  <path d="M7 16a8 8 0 0 1 8-8h14v48H15a8 8 0 0 1-8-8V16Z" fill="#272333"/>
+  <path d="M35 8h14a8 8 0 0 1 8 8v32a8 8 0 0 1-8 8H35V8Z" fill="#7254d8"/>
+  <path d="m23 23 20 9-20 9V23Z" fill="#fff"/>
+  <path d="M32 5v54" stroke="#fff" stroke-width="3"/>
+  <path d="M15 14h6M43 50h6" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+
+</g><text x="160" y="546" font-family="Arial,sans-serif" font-size="38" fill="#272333">You, in <tspan font-weight="700">iPhoneDuo</tspan></text></svg>
