@@ -2,6 +2,14 @@
 
 2026-09-10，Windows、Node.js 24.15.0、Modern.js 3.9.0、React 19.3.0、TypeScript 6.0.3。前端使用 Rsbuild／Rspack；原生 FFmpeg 6.1.1、ffprobe 4.0.2。
 
+## 長影片合成的記憶體修正
+
+正式站接受六分鐘影片後，合成的 Vercel instance 曾因記憶體不足被終止。本機使用相同影片、305 秒起點及原生 graph 重現：FFmpeg 峰值 904,644 KiB，超過新增測試的 512 MiB 預算。
+
+把輸入解碼範圍限制在選定起點後的模板長度，並使用 x264 zerolatency 避免堆積 lookahead 影格後，相同重現命令的峰值降至 395,736 KiB。這只限制單次合成處理的片段，不限制可匯入的影片長度。
+
+lint、typecheck、Modern.js build 及 Vitest 8 檔 86 項通過；原生 MP4 格式、完整解碼與固定模板長度驗證通過。瀏覽器與正式站最終結果見記憶體修正 PR。
+
 ## 目前：只限制大小與步驟圖示
 
 - 匯入保留 5 MiB 上限，取消前端、ffprobe、合成及開始時間的秒數上限。實際使用 360 秒／715,171 bytes 影片，從第 305 秒完成磁碟與跨冷啟動私有 Blob 合成。

@@ -193,6 +193,9 @@ export function buildRenderSpec(
     '-1',
     '-ss',
     String(options.startTime),
+    // Bound input decoding too; output -t alone can leave high-resolution frames queued.
+    '-t',
+    String(template.duration),
     '-protocol_whitelist',
     'file,pipe',
     '-format_whitelist',
@@ -222,6 +225,9 @@ export function buildRenderSpec(
     '2',
     '-preset',
     'veryfast',
+    // Avoid x264 retaining lookahead frames alongside the RGBA compositing buffers.
+    '-tune',
+    'zerolatency',
     '-crf',
     '20',
     '-pix_fmt',
