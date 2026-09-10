@@ -610,31 +610,66 @@ progress::-moz-progress-bar {
   font-size: 11px;
 }
 .error-banner {
-  margin-top: 20px;
+  position: fixed;
+  z-index: 100;
+  inset: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) auto
+    max(12px, env(safe-area-inset-left));
+  width: auto;
+  max-width: 560px;
+  margin: 0 auto;
   border: 1px solid #e2b9b5;
-  border-radius: 12px;
+  border-radius: 18px;
   background: #fff6f5;
-  color: #963c32;
-  padding: 16px;
+  color: #7f2923;
+  box-shadow: 0 8px 28px #30212324;
+  padding: 10px 10px 10px 16px;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
 }
-.error-banner > div {
-  flex: 1;
-  min-width: 0;
-}
-.error-banner strong {
-  font-size: 13px;
+.error-banner[popover]:not(:popover-open) {
+  display: none;
 }
 .error-banner p {
-  margin: 5px 0 0;
-  line-height: 1.6;
-  font-size: 12px;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  line-height: 1.5;
+  font-size: 14px;
+  overflow-wrap: anywhere;
 }
+.error-symbol,
 .error-banner button {
   flex-shrink: 0;
   color: inherit;
+}
+.error-symbol {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  font:
+    700 13px / 1 system-ui,
+    sans-serif;
+}
+.error-close {
+  display: block;
+  font:
+    400 27px / 1 system-ui,
+    sans-serif;
+}
+.error-banner button {
+  min-width: 44px;
+  min-height: 44px;
+}
+.error-retry {
+  border: 0;
+  border-radius: 10px;
+  background: #f5dfdc;
+  padding: 8px;
+  font-weight: 600;
 }
 footer {
   border-top: 1px solid var(--line);
@@ -730,8 +765,7 @@ footer {
   border-color: var(--accent);
 }
 .share-help,
-.share-success,
-.share-error {
+.share-success {
   margin: 10px 0 0;
   font-size: 11px;
   line-height: 1.6;
@@ -742,9 +776,6 @@ footer {
   display: flex;
   align-items: center;
   gap: 5px;
-}
-.share-error {
-  color: #963c32;
 }
 .spin {
   animation: spin 1s linear infinite;

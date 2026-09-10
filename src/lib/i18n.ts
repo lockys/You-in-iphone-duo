@@ -247,6 +247,11 @@ export const messages = {
     '模板尚未准备完成，请稍后重试。',
     'The template is not ready yet. Please try again later.',
   ],
+  'error.cloudStorage': [
+    '雲端影片暫存尚未設定，請連接 Vercel 私有 Blob 儲存。',
+    '云端视频暂存尚未配置，请连接 Vercel 私有 Blob 存储。',
+    'Cloud video storage is not configured. Connect a private Vercel Blob store.',
+  ],
   'error.generic': [
     '處理失敗，請稍後再試。',
     '处理失败，请稍后重试。',

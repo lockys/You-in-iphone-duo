@@ -1,6 +1,6 @@
 # 開發與部署指南
 
-在本機執行的完整 Next.js 網站：匯入影片、自動填入 `8150.mp4` 手機綠幕、即時調整與輸出 MP4。正式輸出使用 **原生 FFmpeg**，沒有付費服務、mock API 或 ffmpeg.wasm。
+在本機執行的完整 Modern.js 網站：匯入影片、自動填入 `8150.mp4` 手機綠幕、即時調整與輸出 MP4。正式輸出使用 **原生 FFmpeg**，不依賴付費轉碼服務；正式 API 不使用 mock 或 ffmpeg.wasm。
 
 ![You, in iPhoneDuo 編輯器與右側浮動操作列](images/desktop.png)
 
@@ -27,7 +27,7 @@ npm start
 # 或 npm start -- --port 3001
 ```
 
-`npm start` 會將 public 與靜態檔複製到 Next standalone 目錄，再啟動正式伺服器。Windows 上重新 build 前請先停止 `npm start`，避免使用中的檔案被鎖住。一般 Node Server 要對外監聽時，設 `BIND_HOST=0.0.0.0`。同一 Wi-Fi 的手機可用電腦 LAN IP 存取；需允許 Windows 防火牆的私人網路存取。開發伺服器對外監聽可用 `npm run dev -- --hostname 0.0.0.0`。
+`npm start` 使用 Modern.js 正式伺服器，支援 `PORT` 與 `--port`。Windows 重新 build 前先停止正在執行的伺服器。可攜式 Node 部署使用 `npm run deploy -- node`，再執行 `node .output/index.js`。此產物必須在與正式環境相同的作業系統／CPU 架構建立；Docker 會使用 Linux 系統 FFmpeg。
 
 ## 右側浮動操作與品牌
 
@@ -42,11 +42,11 @@ npm start
 
 `public/brand/` 提供雙螢幕播放圖示、單色版、字標、favicon 與主畫面圖示；`npm run brand:prepare` 可重新產生 PNG 與設計總覽。介面保留必要操作、素材來源及暫存提醒，沒有額外品牌副標。
 
-## Rspack
+## Modern.js 與 Rspack
 
-開發與正式版均由 `next-rspack@16.3.4` 接管 bundling，與 `next@16.3.4` 一起鎖版。`next.config.ts` 使用 `withRspack`，`npm run dev`／`npm run build` 不需要額外旗標；不要加入 `--webpack` 或 `--turbopack`。建置起始顯示 Turbopack 後，會明確輸出 `Switching bundler from Turbopack to Rspack based on config`。
+前端使用 **Modern.js 3.9.0**、React 19、TypeScript 與 Tailwind CSS。Modern.js 以 Rsbuild／Rspack 建置，啟用 SSR。路由位於 `src/routes`，API 由 `server/modern.server.ts` 的 Hono middleware 處理；沒有 Next.js 相依套件。
 
-**Next.js 的 Rspack 整合目前仍為實驗性**，建置會顯示套件警告；正式環境需自行評估。[官方狀態](https://nextjs.org/docs/community/rspack)。本專案已針對實測的 standalone 追蹤缺檔，在設定中明確包含 `next-instance-error-state.js`，並以實際 standalone Server 測試全部影片 API。
+`modern.config.ts` 設定根目錄的 `public/` 靜態素材與後端 TypeScript 編譯。開發指令以 tsx 載入後端 TypeScript，避免 Node 24 原生 strip-only 模式無法解析參數屬性。語言 loader 決定初始 HTML，Helmet 更新標題與說明；切換語言不重建編輯器。
 
 ## 分享作品
 
@@ -119,7 +119,7 @@ npm run template:prepare
 
 ## 編輯與輸出行為
 
-- MP4、MOV、WebM、M4V；最多 200 MiB、5 分鐘、4K（最大 4096 × 2160 像素數）。檔名、MIME 與實際容器／視訊均驗證。
+- MP4、MOV、WebM、M4V；最多 5 MiB、5 分鐘、4K（最大 4096 × 2160 像素數）。檔名、MIME 與實際容器／視訊均驗證。
 - 匯入後顯示原始檔名、解析度、長度、大小；後端轉為低解析度 H.264 預覽，支援 HEVC、10-bit HLG/PQ、手機旋轉 metadata 與無音訊影片。
 - 桌機滑鼠拖曳；手機單指拖曳、雙指縮放；鍵盤可操作滑桿與音訊選項。縮放 1–3 倍，X/Y 是各方向可移動範圍的 -100% 至 +100%，邊界會限制住以免露底。
 - Canvas 使用與 FFmpeg 對應的 RGB 色鍵及去綠溢色公式。預覽靜音、時間同步、循環播放，可拖曳時間軸檢查手機展開後的構圖。
@@ -133,9 +133,9 @@ npm run template:prepare
 
 `GET /api/template` 提供追蹤設定與大小上限，並設定匿名 HttpOnly session Cookie。
 
-`POST /api/upload` 接受 multipart `file`。串流存檔後執行 ffprobe 與靜音 H.264 預覽轉碼，回傳 `uploadId`、原始 metadata、`previewUrl`。
+本機 `POST /api/upload` 接受 multipart `file`。串流存檔後執行 ffprobe 與靜音 H.264 預覽轉碼，回傳 `uploadId`、原始 metadata、`previewUrl`。
 
-`POST /api/render` 接受 multipart：
+本機 `POST /api/render` 接受 multipart：
 
 | 欄位                  | 值                                                   |
 | --------------------- | ---------------------------------------------------- |
@@ -165,14 +165,33 @@ HTTP 標頭尚未送出時的同源、忙碌與頻率錯誤使用 403 / 429 等�
 - 預設最多同時 2 個上傳／轉碼／合成工作，每 10 分鐘最多 20 次昂貴操作。未信任代理時使用全伺服器共用頻率上限，不能靠偽造標頭繞過；設定可信任代理後按 IP 限制。
 - FFmpeg 最多 180 秒；完整請求最多 240 秒。使用者取消／中斷串流會終止子程序並清理工作目錄，成功合成後立即刪除直接上傳與 filter 中間檔。
 - 供「重新編輯」使用的來源和預覽，以及下載成品，保留至離開／更換／刪除，或閒置 30 分鐘後清理；每分鐘回收一次。異常關閉的過期目錄也會在啟動後／下一次工作時回收。重新啟動伺服器會失去進行中的編輯 session。
-- 原始來源、預覽與成品不放在 public，不會被打包至 standalone。沒有媒體內容、檔名、原始 stderr 或 access token 日誌；關閉 Next 請求記錄。反向代理也應關閉媒體請求的 access log，避免記錄短效連結。
+- 原始來源、預覽與成品不放在 public，不會被打包至部署產物。沒有媒體內容、檔名、原始 stderr 或 access token 日誌；關閉 Modern.js 請求記錄。反向代理也應關閉媒體請求的 access log，避免記錄短效連結。
 - 預覽直接使用短效串流 URL，沒有建立 Object URL。系統分享另有上述成品記憶體上限。失敗、切換、離開時會取消進行中的傳輸與刪除暫存資產。
-- **需要長時間運行的單一 Node.js process 與可寫磁碟。** 不適合靜態匯出、Edge Runtime，或有低上傳／CPU／時間限制的一般 Serverless 函式。多副本部署必須另接共享工作佇列、共享資產儲存與共享限流。
+- 預設磁碟模式需要單一 Node.js process 與可寫磁碟。Vercel 使用下方私有 Blob 模式，跨 instance 保存資產及限流。仍不支援靜態匯出或 Edge Runtime。
 - 建議至少 2 個 CPU、2 GB RAM、數 GB 可用暫存空間；實際時間隨來源與硬體而變。
 - 追蹤是綠幕範圍隨時間變化的 cover，不包含摺疊面板的 3D 透視重建。Canvas 降採樣與瀏覽器解碼可能有少量邊緣／時間差；最終以正式輸出為準。HDR 轉 SDR 的色調映射可能與手機相簿觀感不同。
 - Windows 的 WebKit 自動化環境需要允許原生媒體子系統讀取本機網站；受限沙箱內連公開 H.264 模板也可能回報不支援。WebKit 測試不等於 iPhone／Safari 實機驗收。
 
 完整設定見 [.env.example](../.env.example)。
+
+## Vercel
+
+`vercel.json` 使用 Modern.js 的 Build Output API，建置指令為 `npm run deploy`。產物含原生 FFmpeg、ffprobe、模板與串流 Node function（最長 300 秒）；不使用 Edge。請讓 Vercel 在 Linux 建置，不要上傳 Windows 的預建產物。
+
+Vercel 的 function 請求／回應限制為 4.5 MB，且程式目錄唯讀。因此：
+
+1. 在本專案連接 **Private Vercel Blob**，建議與 function 同區域。連接 Production／Preview，使用自動提供的 `BLOB_STORE_ID` 、`BLOB_WEBHOOK_PUBLIC_KEY` 與 OIDC；不必建立長效讀寫 token。
+2. 設定隨機的 `CRON_SECRET`，讓 Vercel 每日呼叫 `/api/cleanup`。Hobby 的每日排程已列於設定檔。
+3. 保留 `MEDIA_TEMP_DIR` 或留白均可；Vercel 自動改用作業系統 `/tmp`。若設定 `APP_ORIGIN`，Production 與 Preview 必須各自符合實際網域。
+4. 重新部署，使用小型影片完成上傳、合成、播放與下載；再用大於 4.5 MB 的素材確認直傳流程。
+
+瀏覽器先用 `/api/blob-ticket` 驗證檔名／MIME／大小，再透過 `/api/blob-upload` 取得只允許單一來源路徑的短效上傳簽章，直接串流至私有 Blob。`/api/upload` 只收小型 multipart `cloudId`；`/api/render` 收 `uploadId` 與編輯選項。使用者影片不經過 Vercel function 的上傳大小限制，仍限制 5 MiB。後端下載至私人暫存目錄後執行真正的 FFmpeg。
+
+資產 metadata、每 IP 配額及工作數使用 Blob 條件寫入，跨冷啟動仍有效。預覽／下載回傳 60 秒內到期的私有簽名 URL，以避免大型影片回應經過 function。原始影片不提供讀取連結。未連接儲存時回傳明確的三語 `error.cloudStorage`，不再只有 generic error。
+
+資產建立 30 分鐘後停止存取；更換影片、離開或失敗會要求刪除。瀏覽器異常關閉、網路中斷留下的檔案由每日排程清除，正常排程下最久約再保留 24 小時；排程失敗則需修復後清理。私有儲存及傳輸會使用 Vercel Blob 配額，本專案不會自動升級付費方案。5 分鐘高解析度／HDR 影片可能仍超過 function 的 CPU、暫存空間或時間限制，較重工作請使用 Docker／一般 Node server。
+
+本機測試 Blob adapter 可設 `MEDIA_STORAGE=blob` 並使用開發環境憑證。正式雲端驗收需要真實私有 Blob；離線測試的儲存替身只用於測試，不會進入正式 API。
 
 ## Docker
 
@@ -214,6 +233,9 @@ npm run build
 npx playwright install chromium webkit
 npm run test:e2e
 npm run verify:video
+# 驗證本機 Vercel 產物，不會部署或建立雲端資源
+npm run deploy -- vercel
+npm run verify:deployment
 ```
 
 Playwright 會在 port 3100 啟動**正式版**伺服器，使用獨立暫存目錄與測試限流設定。請先停止佔用該 port 的其他服務。Windows 建議在一般終端機執行完整媒體測試。`test:fixtures` 的旋轉 fixture 產生指令需要 FFmpeg 6+。
@@ -239,18 +261,18 @@ Playwright 覆蓋桌機 Chromium、Android 尺寸 Chromium、iPhone 尺寸 WebKi
 | `src/components/result-player.tsx`                     | 行動成品播放及捲動定位                                  |
 | `src/components/language-provider.tsx`                 | 不重載的語言切換、網址與偏好記憶                        |
 | `src/lib/i18n.ts`、`src/lib/errors.ts`                 | 三語字典、素材來源、穩定錯誤代碼與安全回應解碼          |
-| `src/proxy.ts`                                         | 依網址與 Cookie 選擇伺服器 HTML 語言，只處理首頁        |
+| `src/routes/page.data.ts`、`server/modern.server.ts` | Modern.js 路由、SSR 語言、Hono API middleware |
 | `src/lib/composition.ts`                               | 前後端共用 cover、驗證、FFmpeg filter 產生              |
 | `src/lib/process.ts`                                   | 原生工具解析、ffprobe、timeout 與取消                   |
 | `src/lib/server.ts`                                    | 磁碟串流、session／唯讀權杖、限流、工作數、回收與 Range |
-| `src/app/api/*`                                        | template、upload、render、media Route Handlers          |
+| `server/routes/*`、`server/cloud-api.ts`、`server/cloud-store.ts` | 原生影片 API、Vercel 私有儲存、跨 instance 配額 |
 | `scripts/prepare-template.ts`                          | 真實模板分析、逐格追蹤與預覽準備                        |
 | `scripts/verify-video.ts`                              | 實際輸出與影格驗證                                      |
-| `scripts/start.mjs`                                    | Windows／Node standalone 正式啟動                       |
+| `scripts/start.mjs`                                    | Modern.js 正式啟動                       |
 | `tests/`、`e2e/`                                       | 單元／原生整合／像素與瀏覽器測試                        |
 | `evidence/`                                            | 實際輸出、ffprobe 結果、影格與 UI 截圖                  |
 | `docs/verification.md`                                 | 本次已執行的驗證結果與限制                              |
 
 程式碼沿用儲存庫既有 [MIT License](../LICENSE)。模板影片屬第三方素材，來源已標示，MIT 程式授權不代表授予該影片的著作權。
 
-技術依據：[Next.js 自行託管](https://nextjs.org/docs/app/guides/self-hosting)、[FFmpeg filters](https://ffmpeg.org/ffmpeg-filters.html)、[Playwright 瀏覽器與平台差異](https://playwright.dev/docs/browsers)。
+技術依據：[Modern.js 部署](https://modernjs.dev/guides/basic-features/deploy.html)、[FFmpeg filters](https://ffmpeg.org/ffmpeg-filters.html)、[Playwright 瀏覽器與平台差異](https://playwright.dev/docs/browsers)。

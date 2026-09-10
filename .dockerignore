@@ -10,3 +10,8 @@ test-results
 playwright-report
 8150.mp4
 tests/fixtures
+
+dist
+.output
+.vercel
+.modern-js

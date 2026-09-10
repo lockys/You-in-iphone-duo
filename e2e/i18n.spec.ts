@@ -32,10 +32,15 @@ test('三種語言網址、來源、記憶偏好與真實 API 錯誤', async ({ 
     const html = await (await request.get(`/?lang=${version.locale}`)).text();
     expect(html).toContain(`<html lang="${version.html}"`);
     expect(html).toContain(version.title);
-    expect(html.match(/<title>/g)).toHaveLength(1);
+    expect(html.match(/<title\b[^>]*>/g)).toHaveLength(1);
     await page.goto(`/?lang=${version.locale}`);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(version.title);
     await expect(page.locator('html')).toHaveAttribute('lang', version.html);
+    await expect(page.locator('meta[name="viewport"]')).toHaveCount(1);
+    await expect(page.locator('meta[name="viewport"]')).toHaveAttribute(
+      'content',
+      /^width=device-width,\s*initial-scale=1,\s*viewport-fit=cover$/,
+    );
     await expect(page.getByRole('combobox')).toHaveValue(version.locale);
     const source = page.getByTestId('template-source');
     await expect(source).toHaveText('@MurdoinkGS · X');

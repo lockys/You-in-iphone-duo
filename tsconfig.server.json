@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": false, "incremental": false, "rootDir": "." },
+  "include": ["server/**/*.ts", "src/lib/**/*.ts"],
+  "exclude": ["node_modules", "dist", ".output", ".vercel", ".next"]
+}

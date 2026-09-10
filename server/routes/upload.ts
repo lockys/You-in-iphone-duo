@@ -1,6 +1,6 @@
 import path from 'node:path';
-import { binary, probe, runProcess } from '@/lib/process';
-import { MediaError } from '@/lib/composition';
+import { binary, probe, runProcess } from '../../src/lib/process';
+import { MediaError } from '../../src/lib/composition';
 import {
   acquire,
   createAsset,
@@ -11,13 +11,11 @@ import {
   releaseAsset,
   session,
   streamTask,
-} from '@/lib/server';
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
-export async function POST(request: Request) {
+} from '../../src/lib/server';
+export async function POST(request: Request, quotaAlreadyAcquired = false) {
   let release: (() => void) | undefined;
   try {
-    release = acquire(request);
+    release = quotaAlreadyAcquired ? () => {} : acquire(request);
     const auth = session(request);
     const asset = await createAsset(auth.owner);
     return streamTask(request, auth.cookie, async (send, signal) => {

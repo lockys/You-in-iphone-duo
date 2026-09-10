@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, LoaderCircle, Share2, X } from 'lucide-react';
 import { useLanguage } from './language-provider';
+import ErrorBanner from './error-banner';
 import { MediaError } from '@/lib/errors';
 import type { ErrorCode } from '@/lib/i18n';
 import {
@@ -172,11 +173,7 @@ export default function SharePanel({ url }: { url: string }) {
               {t('shareHandedOff')}
             </p>
           )}
-          {error && (
-            <p className="share-error" role="alert">
-              {t(error)}
-            </p>
-          )}
+          {error && <ErrorBanner message={t(error)} onDismiss={() => setError(undefined)} />}
         </section>
       </dialog>
     </>

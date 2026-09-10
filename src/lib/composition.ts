@@ -44,7 +44,14 @@ export function parseOptions(fields: Record<string, unknown>): EditOptions {
   if (!parsed.success) throw new MediaError('error.invalidOptions');
   return parsed.data;
 }
-export function validateFile(name: string, mime: string, size: number, maxBytes = 200 * 1024 ** 2) {
+export const MAX_UPLOAD_BYTES = 5 * 1024 ** 2;
+export function uploadLimit(megabytes?: string) {
+  const configured = Number(megabytes);
+  return Number.isFinite(configured) && configured > 0
+    ? Math.min(MAX_UPLOAD_BYTES, Math.floor(configured * 1024 ** 2))
+    : MAX_UPLOAD_BYTES;
+}
+export function validateFile(name: string, mime: string, size: number, maxBytes = MAX_UPLOAD_BYTES) {
   if (
     !/\.(mp4|mov|webm|m4v)$/i.test(name) ||
     !['video/mp4', 'video/quicktime', 'video/webm', 'video/x-m4v', 'application/octet-stream'].includes(

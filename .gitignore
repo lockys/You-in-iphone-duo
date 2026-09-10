@@ -10,3 +10,8 @@ playwright-report/
 tools/
 evidence/
 .media-cache*/
+
+dist/
+.output/
+.vercel/
+.modern-js/

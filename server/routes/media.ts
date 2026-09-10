@@ -1,6 +1,4 @@
-import { checkOrigin, dispose, findAsset, jsonError, serveAsset, session } from '@/lib/server';
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+import { checkOrigin, dispose, findAsset, jsonError, serveAsset, session } from '../../src/lib/server';
 type Context = { params: Promise<{ id: string }> };
 export async function GET(request: Request, context: Context) {
   try {

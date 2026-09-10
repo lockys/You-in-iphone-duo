@@ -1,10 +1,10 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { readFile, readdir } from 'node:fs/promises';
-import { POST as render } from '../src/app/api/render/route';
-import { GET as getTemplate } from '../src/app/api/template/route';
-import { POST as upload } from '../src/app/api/upload/route';
-import { GET as media, DELETE as remove } from '../src/app/api/media/[id]/route';
-import { acquire, cacheRoot, checkOrigin } from '../src/lib/server';
+import { mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { POST as render } from '../server/routes/render';
+import { GET as getTemplate } from '../server/routes/template';
+import { POST as upload } from '../server/routes/upload';
+import { GET as media, DELETE as remove } from '../server/routes/media';
+import { acquire, cacheRoot, checkOrigin, receiveMultipart } from '../src/lib/server';
 import { binary, runProcess } from '../src/lib/process';
 import { locales, translate } from '../src/lib/i18n';
 let cookie = '';
@@ -29,6 +29,23 @@ beforeAll(async () => {
   cookie = result.headers.get('set-cookie')!.split(';')[0];
 });
 describe('原生 API 整合', () => {
+  it('磁碟串流接受恰好 5 MB，超過一個位元組即拒絕', async () => {
+    await mkdir(cacheRoot, { recursive: true });
+    const dir = await mkdtemp(`${cacheRoot}/limit-`);
+    try {
+      const form = new FormData();
+      form.set('file', new File([Buffer.alloc(5 * 1024 ** 2)], 'exact.mp4', { type: 'video/mp4' }));
+      const exact = await receiveMultipart(request('/api/upload', form), dir, new AbortController().signal);
+      expect(exact.size).toBe(5 * 1024 ** 2);
+      await rm(exact.file!);
+      form.set('file', new File([Buffer.alloc(5 * 1024 ** 2 + 1)], 'large.mp4', { type: 'video/mp4' }));
+      await expect(
+        receiveMultipart(request('/api/upload', form), dir, new AbortController().signal),
+      ).rejects.toMatchObject({ status: 413 });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
   it.each(locales)('%s 的 HTTP 與串流錯誤均回傳譯文及穩定代碼', async (locale) => {
     const blocked = await render(
       new Request(url + '/api/render', {
@@ -193,10 +210,10 @@ describe('原生 API 整合', () => {
     const form = new FormData();
     form.set('file', await fixture());
     const req = request('/api/render', form);
-    req.headers.set('content-length', String(201 * 1024 ** 2));
+    req.headers.set('content-length', String(6 * 1024 ** 2));
     expect((await events(await render(req))).at(-1)).toMatchObject({
       type: 'error',
-      error: '影片不能超過 200 MB。',
+      error: '影片不能超過 5 MB。',
     });
     expect((await readdir(cacheRoot)).sort()).toEqual(before);
   });
