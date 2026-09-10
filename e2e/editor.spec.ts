@@ -3,16 +3,26 @@ import path from 'node:path';
 import { writeFile } from 'node:fs/promises';
 
 test('影片載入時在容器內顯示 loader，播放後移除', async ({ page }) => {
+  await page.goto('/?lang=en');
+  const demo = page.getByTestId('demo-video');
+  await demo.scrollIntoViewIfNeeded();
+  await expect.poll(() => demo.evaluate((v: HTMLVideoElement) => v.readyState)).toBeGreaterThanOrEqual(2);
   let release!: () => void;
   const gate = new Promise<void>((resolve) => {
     release = resolve;
   });
-  await page.route('**/templates/demo.mp4', async (route) => {
+  await page.route('**/templates/demo.mp4?loading-test=*', async (route) => {
     await gate;
     await route.continue();
   });
   try {
-    await page.goto('/?lang=en', { waitUntil: 'domcontentloaded' });
+    // WebKit's decoded-media cache can survive contexts. Use a fresh URL so
+    // this test actually waits for bytes, even after another test played it.
+    await demo.evaluate((v: HTMLVideoElement) => {
+      v.src = `/templates/demo.mp4?loading-test=${Date.now()}`;
+      v.load();
+      void v.play().catch(() => {});
+    });
     const loader = page.locator('.demo-preview .video-loader');
     await expect(loader).toBeVisible();
     await expect(loader).toHaveText('Loading video…');

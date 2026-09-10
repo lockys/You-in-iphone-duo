@@ -4,6 +4,26 @@ import { once } from 'node:events';
 import path from 'node:path';
 
 test('Blob 跨網域重新導向後仍可讀取合成預覽像素', async ({ page }) => {
+  // Reproduce Safari's metadata-only preload: decoding requires an explicit
+  // play request. The actual MP4 decoding and Canvas drawing remain real.
+  await page.addInitScript(() => {
+    const started = new WeakSet<HTMLMediaElement>();
+    const readiness = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'readyState')!;
+    const play = HTMLMediaElement.prototype.play;
+    Object.defineProperty(HTMLMediaElement.prototype, 'readyState', {
+      configurable: true,
+      get() {
+        const actual = readiness.get!.call(this);
+        return this.getAttribute('crossorigin') === 'anonymous' && !started.has(this)
+          ? Math.min(1, actual)
+          : actual;
+      },
+    });
+    HTMLMediaElement.prototype.play = function () {
+      started.add(this);
+      return play.call(this);
+    };
+  });
   let media: Buffer = Buffer.alloc(0);
   const cdn = createServer((_request, response) => {
     response.writeHead(200, {
@@ -33,6 +53,7 @@ test('Blob 跨網域重新導向後仍可讀取合成預覽像素', async ({ pag
     await expect(page.getByLabel('選擇影片檔案')).toBeEnabled();
     await page.getByLabel('選擇影片檔案').setInputFiles(path.resolve('tests/fixtures/portrait.mp4'));
     await expect(page.getByRole('button', { name: '產生迷因' })).toBeEnabled();
+    await expect(page.getByTestId('demo-video')).toHaveCount(0);
     await expect
       .poll(() =>
         page
@@ -57,6 +78,17 @@ test('Blob 跨網域重新導向後仍可讀取合成預覽像素', async ({ pag
       )
       .toBeGreaterThan(1000);
     await expect(page.locator('.error-banner')).toHaveCount(0);
+    await expect(page.locator('.preview-box .video-loader')).toHaveCount(0);
+    for (const index of [0, 1]) {
+      await expect
+        .poll(() =>
+          page
+            .locator('video.source-video')
+            .nth(index)
+            .evaluate((v: HTMLVideoElement) => v.currentTime),
+        )
+        .toBeGreaterThan(0.1);
+    }
   } finally {
     cdn.closeAllConnections();
     await new Promise<void>((resolve) => cdn.close(() => resolve()));

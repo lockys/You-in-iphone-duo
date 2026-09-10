@@ -1,8 +1,9 @@
 'use client';
-import { useEffect, useRef, useState, type PointerEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react';
 import { Pause, Play, VolumeX, Move, RotateCcw } from 'lucide-react';
 import { useLanguage } from './language-provider';
 import FloatingPreview from './floating-preview';
+import VideoLoader from './video-loader';
 import type { ErrorCode } from '@/lib/i18n';
 import {
   cover,
@@ -34,6 +35,20 @@ export default function Preview({ template, source, media, options, onChange, di
     latest.current = { options, media, disabled, onChange };
   }, [options, media, disabled, onChange]);
   const [playing, setPlaying] = useState(false);
+  const [frameReady, setFrameReady] = useState(false);
+  const [needsGesture, setNeedsGesture] = useState(false);
+  const userPaused = useRef(false);
+  const playBoth = useCallback(() => {
+    setNeedsGesture(false);
+    for (const player of [phone.current, content.current]) {
+      if (!player) continue;
+      player.muted = true;
+      player.defaultMuted = true;
+      void player.play().catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'NotAllowedError') setNeedsGesture(true);
+      });
+    }
+  }, []);
   const [time, setTime] = useState(0);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const pinch = useRef<{ distance: number; scale: number } | null>(null);
@@ -43,6 +58,9 @@ export default function Preview({ template, source, media, options, onChange, di
     const video = content.current;
     const target = canvas.current;
     if (!player || !target) return;
+    setFrameReady(false);
+    setNeedsGesture(false);
+    userPaused.current = false;
     const context = target.getContext('2d');
     const foreground = document.createElement('canvas');
     foreground.width = target.width;
@@ -57,6 +75,7 @@ export default function Preview({ template, source, media, options, onChange, di
       lastUI = -1,
       stopped = false;
     let lastRenderKey = '';
+    let painted = false;
     const draw = () => {
       if (stopped) return;
       frame = requestAnimationFrame(draw);
@@ -67,8 +86,6 @@ export default function Preview({ template, source, media, options, onChange, di
         const distance = Math.abs(video.currentTime - desired);
         if (!video.seeking && Math.min(distance, video.duration - distance) > 0.085)
           video.currentTime = desired;
-        if (!player.paused && video.paused) void video.play().catch(() => {});
-        if (player.paused && !video.paused) video.pause();
       }
       // Paused frames redraw when media or settings change, without repeating blur work.
       const opts = latest.current.options;
@@ -100,6 +117,10 @@ export default function Preview({ template, source, media, options, onChange, di
         }
         fg.putImageData(image, 0, 0);
         context.drawImage(foreground, 0, 0);
+        if (!painted && (!source || (video && video.readyState >= 2))) {
+          painted = true;
+          setFrameReady(true);
+        }
       } catch {
         stopped = true;
         onError('error.previewRead');
@@ -111,18 +132,21 @@ export default function Preview({ template, source, media, options, onChange, di
     };
     frame = requestAnimationFrame(draw);
     const start = () => {
-      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) void player.play().catch(() => {});
+      if (!userPaused.current && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) playBoth();
     };
-    player.addEventListener('canplay', start, { once: true });
-    if (player.readyState >= 3) start();
+    // Safari may need play() before decoding either video's first frame.
+    start();
+    player.addEventListener('loadedmetadata', start);
+    video?.addEventListener('loadedmetadata', start);
     return () => {
       stopped = true;
       cancelAnimationFrame(frame);
-      player.removeEventListener('canplay', start);
+      player.removeEventListener('loadedmetadata', start);
+      video?.removeEventListener('loadedmetadata', start);
       player.pause();
       video?.pause();
     };
-  }, [template, source, onError]);
+  }, [template, source, onError, playBoth]);
 
   useEffect(() => {
     if (phone.current) phone.current.currentTime = 0;
@@ -175,6 +199,21 @@ export default function Preview({ template, source, media, options, onChange, di
     <div className="preview-box">
       <FloatingPreview key={source || 'empty'} enabled={!!media && !disabled}>
         <div className="canvas-wrap">
+          {!frameReady && !needsGesture && <VideoLoader label={t('loadingVideo')} />}
+          {needsGesture && (
+            <button
+              className="demo-play"
+              style={{ zIndex: 4 }}
+              type="button"
+              aria-label={t('play')}
+              onClick={() => {
+                userPaused.current = false;
+                playBoth();
+              }}
+            >
+              <Play size={28} aria-hidden="true" />
+            </button>
+          )}
           <canvas
             ref={canvas}
             width={768}
@@ -222,8 +261,14 @@ export default function Preview({ template, source, media, options, onChange, di
           className="icon-button"
           aria-label={playing ? t('pause') : t('play')}
           onClick={() => {
-            if (playing) phone.current?.pause();
-            else void phone.current?.play().catch(() => onError('error.previewPlay'));
+            if (playing) {
+              userPaused.current = true;
+              phone.current?.pause();
+              content.current?.pause();
+            } else {
+              userPaused.current = false;
+              playBoth();
+            }
           }}
         >
           {playing ? <Pause size={17} /> : <Play size={17} />}

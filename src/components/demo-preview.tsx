@@ -19,7 +19,7 @@ export default function DemoPreview() {
       if (reduced.matches || userPaused.current || document.hidden) return;
       void player.play().catch(() => {
         setPlaying(false);
-        setLoading(false);
+        setLoading(player.readyState < 2);
       });
     };
     const motionChanged = () => {
@@ -49,7 +49,7 @@ export default function DemoPreview() {
       setLoading(true);
       void player.play().catch(() => {
         setPlaying(false);
-        setLoading(false);
+        setLoading(player.readyState < 2);
       });
     }
   };
