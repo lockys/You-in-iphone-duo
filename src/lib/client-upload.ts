@@ -1,5 +1,34 @@
 import { MediaError, errorFromResponse } from './errors';
 import { languageHeader, type Locale } from './i18n';
+// Native probing remains authoritative for codecs the browser cannot inspect (for example HEVC).
+export function readVideoDuration(file: File, signal: AbortSignal): Promise<number | undefined> {
+  return new Promise((resolve, reject) => {
+    signal.throwIfAborted();
+    const video = document.createElement('video');
+    const url = URL.createObjectURL(file);
+    const finish = (aborted = false) => {
+      const duration = video.duration;
+      clearTimeout(timer);
+      signal.removeEventListener('abort', cancel);
+      video.onloadedmetadata = null;
+      video.onerror = null;
+      video.removeAttribute('src');
+      video.load();
+      URL.revokeObjectURL(url);
+      if (aborted) reject(new DOMException('Cancelled', 'AbortError'));
+      else resolve(Number.isFinite(duration) && duration > 0 ? duration : undefined);
+    };
+    const cancel = () => finish(true);
+    const timer = setTimeout(() => finish(), 3000);
+    signal.addEventListener('abort', cancel, { once: true });
+    video.preload = 'metadata';
+    video.muted = true;
+    video.playsInline = true;
+    video.onloadedmetadata = () => finish();
+    video.onerror = () => finish();
+    video.src = url;
+  });
+}
 export type ProgressEvent = {
   type: 'progress' | 'complete' | 'error' | 'heartbeat';
   stage?: string;

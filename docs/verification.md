@@ -2,7 +2,15 @@
 
 2026-09-10，Windows、Node.js 24.15.0、Modern.js 3.9.0、React 19.3.0、TypeScript 6.0.3。前端使用 Rsbuild／Rspack；原生 FFmpeg 6.1.1、ffprobe 4.0.2。
 
-## 本次結果
+## 5 秒匯入上限
+
+- 前端與原生 ffprobe 都限制匯入影片最多 5 秒；磁碟、私有 Blob、直接合成與舊來源快取皆檢查。5 MiB 大小上限維持不變。
+- 真實 5 秒影片可匯入並合成；5.04 秒會以三語頂端提示拒絕。Windows WebKit 無法讀取測試檔的本機 metadata 時由後端檢查；拒絕或取消替換影片會保留原本的編輯。
+- lint、typecheck、Modern.js production build 通過；Vitest 7 檔 86 項通過（約 33 秒），Playwright 31 項通過（約 2.6 分鐘）。
+- 原生 MP4 輸出仍約 5.84 秒，1920×1080、H.264、yuv420p、faststart、完整解碼及開頭／中間／結尾影格檢查通過。
+- 正式站部署後的實測結果記錄於本次 GitHub PR。
+
+## 先前框架遷移與部署結果
 
 | 檢查 | 結果 |
 | --- | --- |

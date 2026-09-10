@@ -75,7 +75,7 @@ export function runProcess(
     });
   });
 }
-export async function probe(input: string, signal?: AbortSignal) {
+export async function probe(input: string, signal?: AbortSignal, maxDuration?: number) {
   const json = await runProcess(
     binary('ffprobe'),
     [
@@ -93,5 +93,5 @@ export async function probe(input: string, signal?: AbortSignal) {
     ],
     { signal, timeout: 15000 },
   );
-  return parseProbe(JSON.parse(json));
+  return parseProbe(JSON.parse(json), maxDuration);
 }

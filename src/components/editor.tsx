@@ -26,16 +26,19 @@ import { MediaError, errorFromResponse } from '@/lib/errors';
 import {
   defaultOptions,
   MAX_UPLOAD_BYTES,
+  MAX_UPLOAD_DURATION,
   validateFile,
+  validateUploadDuration,
   type EditOptions,
   type MediaInfo,
   type Template,
 } from '@/lib/composition';
-import { postMultipart, type ProgressEvent } from '@/lib/client-upload';
+import { postMultipart, readVideoDuration, type ProgressEvent } from '@/lib/client-upload';
 
 type Imported = { id: string; name: string; size: number; info: MediaInfo; preview: string };
 type Result = { id: string; url: string; playUrl: string };
 const stageKeys: Record<string, MessageKey> = {
+  checking: 'stage.checking',
   uploading: 'stage.uploading',
   processing: 'stage.processing',
   compositing: 'stage.compositing',
@@ -65,7 +68,7 @@ export default function Editor() {
   const [downloaded, setDownloaded] = useState(false);
   const picker = useRef<HTMLInputElement>(null);
   const active = useRef<{ abort: () => void } | null>(null);
-  const assets = useRef<{ source?: string; result?: string }>({});
+  const assets = useRef<{ source?: string; result?: string; pendingSource?: string }>({});
   const reportError = useCallback((code: ErrorCode) => setError(new MediaError(code)), []);
   const loadTemplate = useCallback(() => {
     void fetch('/api/template')
@@ -85,6 +88,7 @@ export default function Editor() {
       active.current?.abort();
       erase(assets.current.source);
       erase(assets.current.result);
+      erase(assets.current.pendingSource);
     };
   }, [loadTemplate]);
   useEffect(() => {
@@ -93,6 +97,7 @@ export default function Editor() {
       active.current?.abort();
       erase(assets.current.source);
       erase(assets.current.result);
+      erase(assets.current.pendingSource);
     };
     window.addEventListener('pagehide', close);
     return () => window.removeEventListener('pagehide', close);
@@ -110,25 +115,20 @@ export default function Editor() {
     }
   };
   const importFile = async (file?: File) => {
-    if (!file || busy) return;
+    if (!file || busy || active.current) return;
     try {
       validateFile(file.name, file.type || 'application/octet-stream', file.size, limit);
     } catch (e) {
       setError(e instanceof MediaError ? e : new MediaError('error.generic'));
+      if (picker.current) picker.current.value = '';
       return;
     }
-    erase(assets.current.source);
-    erase(assets.current.result);
-    assets.current = {};
-    setMedia(undefined);
-    setResult(undefined);
     setError(null);
     setBusy('upload');
-    setStatus('uploading');
+    setStatus('checking');
     setProgress(0);
     setElapsed(0);
     setFilename(file.name);
-    setOptions(defaultOptions);
     const xhr = new XMLHttpRequest();
     const data = new FormData();
     const controller = new AbortController();
@@ -139,6 +139,10 @@ export default function Editor() {
       },
     };
     try {
+      const duration = await readVideoDuration(file, controller.signal);
+      controller.signal.throwIfAborted();
+      if (duration !== undefined) validateUploadDuration(duration);
+      setStatus('uploading');
       if (storage === 'blob') {
         const response = await fetch('/api/blob-ticket', {
           method: 'POST',
@@ -152,7 +156,7 @@ export default function Editor() {
         });
         const ticket = await response.json();
         if (!response.ok) throw errorFromResponse(ticket);
-        assets.current.source = ticket.id;
+        assets.current.pendingSource = ticket.id;
         const { uploadPresigned } = await import('@vercel/blob/client');
         await uploadPresigned(ticket.pathname, file, {
           access: 'private',
@@ -169,13 +173,17 @@ export default function Editor() {
       } else data.append('file', file);
       const done = await postMultipart('/api/upload', data, xhr, onProgress, locale);
       const id = String(done.uploadId);
-      assets.current.source = id;
+      erase(assets.current.source);
+      erase(assets.current.result);
+      assets.current = { source: id };
       const preview = String(done.previewUrl);
+      setResult(undefined);
+      setOptions(defaultOptions);
       setMedia({ id, name: file.name, size: Number(done.size), info: done.info as MediaInfo, preview });
       setStatus('');
     } catch (e) {
-      erase(assets.current.source);
-      assets.current = {};
+      erase(assets.current.pendingSource);
+      assets.current.pendingSource = undefined;
       if (!controller.signal.aborted && !(e instanceof DOMException && e.name === 'AbortError')) {
         setError(e instanceof MediaError ? e : new MediaError('error.generic'));
         setStatus('error');
@@ -300,7 +308,10 @@ export default function Editor() {
                   <span>
                     {media
                       ? `${media.info.duration.toFixed(2)} ${t('seconds')} · ${media.info.width} × ${media.info.height} · ${(media.size / 1024 ** 2).toFixed(1)} MB`
-                      : t('fileLimits', { size: Math.round(limit / 1024 ** 2) })}
+                      : t('fileLimits', {
+                          size: Math.round(limit / 1024 ** 2),
+                          seconds: MAX_UPLOAD_DURATION,
+                        })}
                   </span>
                 </span>
                 {media ? (

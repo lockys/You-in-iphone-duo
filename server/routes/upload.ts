@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { binary, probe, runProcess } from '../../src/lib/process';
-import { MediaError } from '../../src/lib/composition';
+import { MAX_UPLOAD_DURATION, MediaError } from '../../src/lib/composition';
 import {
   acquire,
   createAsset,
@@ -23,7 +23,7 @@ export async function POST(request: Request, quotaAlreadyAcquired = false) {
         const upload = await receiveMultipart(request, asset.dir, signal);
         if (!upload.file) throw new MediaError('error.chooseFile');
         send({ type: 'progress', stage: 'processing', progress: 5 });
-        asset.info = await probe(upload.file, signal);
+        asset.info = await probe(upload.file, signal, MAX_UPLOAD_DURATION);
         asset.size = upload.size;
         asset.preview = path.join(asset.dir, 'preview.mp4');
         const tone = asset.info.hdr

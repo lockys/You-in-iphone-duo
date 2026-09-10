@@ -36,9 +36,9 @@ export const messages = {
   chooseFile: ['選擇影片檔案', '选择视频文件', 'Choose a video file'],
   drop: ['點擊選擇，或把影片拖曳到這裡', '点击选择，或将视频拖到这里', 'Choose a video or drag it here'],
   fileLimits: [
-    '支援 iPhone 影片，最大 {size} MB・5 分鐘',
-    '支持 iPhone 视频，最大 {size} MB・5 分钟',
-    'iPhone videos supported · Up to {size} MB / 5 min',
+    '支援 iPhone 影片，最大 {size} MB・{seconds} 秒',
+    '支持 iPhone 视频，最大 {size} MB・{seconds} 秒',
+    'iPhone videos supported · Up to {size} MB / {seconds} seconds',
   ],
   replace: ['更換影片', '更换视频', 'Replace video'],
   previewTitle: ['看看效果', '看看效果', 'See it in action'],
@@ -84,6 +84,7 @@ export const messages = {
   attention: ['請留意', '请注意', 'Please check'],
   closeError: ['關閉錯誤訊息', '关闭错误信息', 'Dismiss error'],
   reload: ['重新載入', '重新加载', 'Reload'],
+  'stage.checking': ['正在檢查影片', '正在检查视频', 'Checking video'],
   'stage.uploading': ['正在上傳', '正在上传', 'Uploading'],
   'stage.processing': ['正在處理影片', '正在处理视频', 'Processing video'],
   'stage.compositing': ['正在合成', '正在合成', 'Compositing'],
@@ -177,9 +178,9 @@ export const messages = {
     'Cannot read this video. Check that the file is complete and contains video.',
   ],
   'error.duration': [
-    '影片最長可匯入 {minutes} 分鐘，請先剪短。',
-    '视频最长可导入 {minutes} 分钟，请先剪短。',
-    'Videos can be up to {minutes} minutes long. Please trim yours first.',
+    '影片最長可匯入 {seconds} 秒，請先剪短。',
+    '视频最长可导入 {seconds} 秒，请先剪短。',
+    'Videos can be up to {seconds} seconds long. Please trim yours first.',
   ],
   'error.resolution': [
     '影片解析度最高支援 4K，請降低解析度後再試。',

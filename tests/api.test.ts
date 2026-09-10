@@ -1,10 +1,10 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { POST as render } from '../server/routes/render';
 import { GET as getTemplate } from '../server/routes/template';
 import { POST as upload } from '../server/routes/upload';
 import { GET as media, DELETE as remove } from '../server/routes/media';
-import { acquire, cacheRoot, checkOrigin, receiveMultipart } from '../src/lib/server';
+import { acquire, cacheRoot, checkOrigin, receiveMultipart, findAsset, session } from '../src/lib/server';
 import { binary, runProcess } from '../src/lib/process';
 import { locales, translate } from '../src/lib/i18n';
 let cookie = '';
@@ -25,10 +25,53 @@ async function fixture(name = 'silent.mp4') {
   });
 }
 beforeAll(async () => {
+  vi.stubEnv('RATE_LIMIT_MAX', '100');
   const result = await getTemplate(new Request(url + '/api/template'));
   cookie = result.headers.get('set-cookie')!.split(';')[0];
 });
+afterAll(() => vi.unstubAllEnvs());
 describe('原生 API 整合', () => {
+  it('5 秒影片可匯入，舊快取的超長影片不能合成', async () => {
+    const form = new FormData();
+    form.set('file', await fixture('duration-5.mp4'));
+    const imported = (await events(await upload(request('/api/upload', form)))).at(-1)!;
+    expect(imported).toMatchObject({ type: 'complete', info: { duration: 5 } });
+    const id = String(imported.uploadId);
+    try {
+      const next = new FormData();
+      next.set('uploadId', id);
+      const req = request('/api/render', next);
+      findAsset(id, session(req).owner).info!.duration = 5.04;
+      expect((await events(await render(req))).at(-1)).toMatchObject({
+        type: 'error',
+        code: 'error.duration',
+        params: { seconds: 5 },
+      });
+    } finally {
+      await remove(new Request(url + `/api/media/${id}`, { method: 'DELETE', headers: { cookie } }), {
+        params: Promise.resolve({ id }),
+      });
+    }
+  });
+  it.each(locales)('%s 的上傳及直接合成均拒絕 5.04 秒影片並清理暫存', async (locale) => {
+    const before = (await readdir(cacheRoot)).sort();
+    for (const [endpoint, handler] of [
+      ['/api/upload', upload],
+      ['/api/render', render],
+    ] as const) {
+      const form = new FormData();
+      form.set('file', await fixture('duration-5.04.mp4'));
+      const req = request(endpoint, form);
+      req.headers.set('x-frame-language', locale);
+      expect((await events(await handler(req))).at(-1)).toMatchObject({
+        type: 'error',
+        code: 'error.duration',
+        params: { seconds: 5 },
+        error: translate(locale, 'error.duration', { seconds: 5 }),
+      });
+      expect((await readdir(cacheRoot)).sort()).toEqual(before);
+    }
+  });
   it('磁碟串流接受恰好 5 MB，超過一個位元組即拒絕', async () => {
     await mkdir(cacheRoot, { recursive: true });
     const dir = await mkdtemp(`${cacheRoot}/limit-`);
