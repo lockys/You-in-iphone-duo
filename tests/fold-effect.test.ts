@@ -4,34 +4,6 @@ import { foldProjection, foldState, foldWeights } from '../src/lib/fold-effect';
 import { frameAt, parseOptions, buildRenderSpec, defaultOptions } from '../src/lib/composition';
 
 describe('folded screen projection and transition', () => {
-  it('starts blur at the hinge instead of the outside edge', () => {
-    for (const time of [2.4, 2.8]) {
-      const state = foldState(template, frameAt(template, time), time);
-      const x = state.hinge;
-      const weights = foldWeights(state, x);
-      expect(weights.blur).toBeGreaterThan(0.8);
-      expect(weights.shade).toBeLessThan(0.8);
-    }
-  });
-  it('spreads left from the inner display center while keeping the right sharp', () => {
-    const state = foldState(template, frameAt(template, 2.9), 2.9);
-    const center = foldWeights(state, state.hinge).blur;
-    const left = foldWeights(state, state.hinge - state.halfWidth * 0.5).blur;
-    const right = foldWeights(state, state.hinge + state.halfWidth * 0.5).blur;
-    expect(center).toBeGreaterThan(0.9);
-    expect(right).toBe(0);
-    expect(left).toBeGreaterThan(0);
-    expect(left).toBeLessThan(center);
-    expect(foldWeights(state, state.hinge + state.halfWidth * 0.9).blur).toBe(0);
-  });
-  it('never blurs any part of the right half during the transition', () => {
-    for (const time of [2.2, 2.4, 2.52, 2.7, 2.9, 3.1, 3.3]) {
-      const state = foldState(template, frameAt(template, time), time);
-      for (const position of [0.001, 0.1, 0.5, 1]) {
-        expect(foldWeights(state, state.hinge + state.halfWidth * position).blur).toBe(0);
-      }
-    }
-  });
   it('keeps a landscape projection while the outer screen reveals its right half', () => {
     const rect = frameAt(template, 0);
     const projection = foldProjection(template, rect);

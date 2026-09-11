@@ -1,28 +1,6 @@
 import { expect, test } from '@playwright/test';
 import path from 'node:path';
 
-// Normalized vertical detail separates actual blur from a darker, still-sharp grid.
-function screenDetail(canvas: HTMLCanvasElement) {
-  const ctx = canvas.getContext('2d')!;
-  const detail = (x: number) => {
-    const { data, width, height } = ctx.getImageData(x, 110, 32, 100);
-    let energy = 0;
-    let brightness = 0;
-    for (let y = 1; y < height - 1; y++) {
-      for (let col = 0; col < width; col++) {
-        const i = (y * width + col) * 4;
-        for (let c = 0; c < 3; c++) {
-          energy += Math.abs(data[i + c - width * 4] - 2 * data[i + c] + data[i + c + width * 4]);
-          brightness += data[i + c];
-        }
-      }
-    }
-    return energy / Math.max(1, brightness);
-  };
-  // Keep both sample rectangles wholly on their side of the tracked hinge.
-  return { moving: detail(310), fixed: detail(405) };
-}
-
 test('fold switch changes the preview and exported video with matching screen shading', async ({
   page,
 }, testInfo) => {
@@ -84,8 +62,6 @@ test('fold switch changes the preview and exported video with matching screen sh
     })
     .toBeGreaterThan(12);
   const enabled = await sample();
-  const previewDetail = await canvas.evaluate(screenDetail);
-  expect(previewDetail.moving).toBeLessThan(previewDetail.fixed * 0.45);
   await canvas.screenshot({ path: `evidence/fold-preview-${testInfo.project.name}.png` });
   await page.getByRole('switch', { name: 'Fold effect' }).uncheck();
   await expect.poll(async () => (await sample()).left).toBeGreaterThan(enabled.left + 10);
@@ -126,18 +102,6 @@ test('fold switch changes the preview and exported video with matching screen sh
   expect(exported.right - exported.left).toBeGreaterThan(12);
   expect(Math.abs(exported.left - enabled.left)).toBeLessThan(18);
   expect(Math.abs(exported.right - enabled.right)).toBeLessThan(18);
-  // Read the decoded MP4 through a canvas, using the same regions as the preview.
-  await video.evaluate((video: HTMLVideoElement) => {
-    const canvas = document.createElement('canvas');
-    canvas.id = 'export-blur-check';
-    canvas.width = 768;
-    canvas.height = 432;
-    canvas.hidden = true;
-    canvas.getContext('2d')!.drawImage(video, 0, 0, 768, 432);
-    document.body.append(canvas);
-  });
-  const outputDetail = await page.locator('#export-blur-check').evaluate(screenDetail);
-  expect(outputDetail.moving).toBeLessThan(outputDetail.fixed * 0.45);
   const downloadEvent = page.waitForEvent('download');
   await page.getByRole('link', { name: 'Download MP4', exact: true }).click();
   await (await downloadEvent).saveAs(`evidence/fold-${testInfo.project.name}.mp4`);

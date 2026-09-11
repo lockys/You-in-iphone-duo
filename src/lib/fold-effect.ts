@@ -3,7 +3,7 @@ import type { Rect, Template } from './composition';
 // Adapted from chuspeeism/iphone-duo main.js screenShader, MIT, (c) 2026 jadon7.
 // See public/licenses/iphone-duo-MIT.txt. The filmed phone supplies the 3D geometry;
 // these shared projection and gradient calculations shade only its keyed screen.
-export const FOLD_BLUR = 42; // Gaussian sigma in 1920px output coordinates.
+export const FOLD_BLUR = 18; // Gaussian sigma in 1920px output coordinates.
 const clamp = (x: number) => Math.max(0, Math.min(1, x));
 const smooth = (x: number) => {
   const t = clamp(x);
@@ -40,12 +40,7 @@ export function foldWeights(state: FoldState, x: number) {
   const inside = state.direction > 0 ? x >= state.hinge && x <= state.edge : x <= state.hinge;
   const edge = clamp(((x - state.hinge) * state.direction) / state.halfWidth);
   const motion = inside ? state.motion : 0;
-  // Blur originates at the inner display's center (the hinge) and spreads
-  // only toward the left edge. The right display stays sharp throughout.
-  // Shadow still belongs only to the rotating face.
-  const distance = Math.abs(x - state.hinge) / state.halfWidth;
-  const blurMotion = x <= state.hinge ? state.motion : 0;
-  const blur = smooth(blurMotion * 3) * smooth((blurMotion * 1.15 - distance) / 0.3);
+  const blur = motion * edge ** 1.35;
   return {
     blur,
     shade: clamp(2 * motion * clamp((edge - 0.2) / 0.8) ** 1.35),
