@@ -280,8 +280,14 @@ async function render(request: Request) {
   const { value: source } = await getCloudAsset(String(form.get('uploadId')), auth.owner);
   if (source.kind !== 'source' || source.status !== 'ready' || !source.info)
     throw new MediaError('error.uploadFirst');
+  const openSource = form.get('openUploadId')
+    ? (await getCloudAsset(String(form.get('openUploadId')), auth.owner)).value
+    : undefined;
+  if (openSource && (openSource.kind !== 'source' || openSource.status !== 'ready' || !openSource.info))
+    throw new MediaError('error.uploadFirst');
   return streamTask(request, auth.cookie, async (send, signal) => {
     let local: Asset | undefined;
+    let openLocal: Asset | undefined;
     let output: Asset | undefined;
     let result: CloudAsset | undefined;
     let release: (() => Promise<void>) | undefined;
@@ -298,9 +304,20 @@ async function render(request: Request) {
         { signal },
       );
       form.set('uploadId', local.id);
+      if (openSource) {
+        openLocal = await createAsset(auth.owner);
+        openLocal.info = openSource.info;
+        await pipeline(
+          Readable.fromWeb((await original(openSource, signal)) as import('node:stream/web').ReadableStream),
+          createWriteStream(openLocal.file, { flags: 'wx', mode: 0o600 }),
+          { signal },
+        );
+        form.set('openUploadId', openLocal.id);
+      }
       const done = await consume(await localRender(bridge(request, '/api/render', form, signal), true), send);
       output = findAsset(String(done.resultId), auth.owner);
       await getCloudAsset(source.id, auth.owner); // A deleted source must not publish a new result.
+      if (openSource) await getCloudAsset(openSource.id, auth.owner);
       result = await newCloudAsset(auth.owner, {
         kind: 'result',
         size: 0,
@@ -318,6 +335,10 @@ async function render(request: Request) {
     } finally {
       try {
         if (output) await dispose(output);
+        if (openLocal) {
+          await dispose(openLocal);
+          await releaseAsset(openLocal);
+        }
         if (local) {
           await dispose(local);
           await releaseAsset(local);

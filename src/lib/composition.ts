@@ -34,6 +34,19 @@ export const optionsSchema = z.object({
   foldEffect: z.enum(['on', 'off']).default('on'),
 });
 export type EditOptions = z.infer<typeof optionsSchema>;
+export type SecondVideo = { info: MediaInfo; options: EditOptions; file: string };
+// First frame showing the inner display; shared by Canvas, video and audio.
+export const unfoldTime = (template: Template) => Math.ceil(2.52 * template.fps) / template.fps;
+export function parseSecondOptions(fields: Record<string, unknown>, primary: EditOptions) {
+  return parseOptions({
+    startTime: fields.openStartTime,
+    scale: fields.openScale,
+    offsetX: fields.openOffsetX,
+    offsetY: fields.openOffsetY,
+    audioMode: primary.audioMode,
+    foldEffect: primary.foldEffect,
+  });
+}
 export const defaultOptions: EditOptions = {
   startTime: 0,
   scale: 1,
@@ -175,14 +188,13 @@ function foldFilter(template: Template) {
     `[blurred][foldmask2]blend=all_mode=multiply,pad=${template.width}:${template.height}:${left}:${top},format=rgba[content];\n`
   );
 }
-export function buildRenderSpec(
+function projectVideo(
   media: MediaInfo,
   template: Template,
   options: EditOptions,
-  input: string,
-  templatePath: string,
-  output: string,
-  filterPath: string,
+  index: number,
+  label: string,
+  delay = 0,
 ) {
   validateDuration(media.duration);
   options = parseOptions(options);
@@ -203,8 +215,34 @@ export function buildRenderSpec(
   // Fixed-size frames avoid overlay retaining stale dimensions during the unfolding.
   // The two transforms cancel the intermediate aspect change: final content retains
   // its original aspect ratio and is positioned using the shared cover geometry.
-  let filter =
-    `[0:v:0]setpts=PTS-STARTPTS,${tone}fps=${fps},scale=${template.width}:${template.height},setsar=1,perspective=x0='${x}':y0='${y}':x1='${right}':y1='${y}':x2='${x}':y2='${bottom}':x3='${right}':y3='${bottom}':sense=destination:eval=frame:interpolation=linear,format=rgba[${options.foldEffect === 'on' ? 'projected' : 'content'}];\n` +
+  return `[${index}:v:0]setpts=PTS-STARTPTS,${tone}${delay ? `tpad=start_mode=clone:start_duration=${delay},` : ''}fps=${fps},scale=${template.width}:${template.height},setsar=1,perspective=x0='${x}':y0='${y}':x1='${right}':y1='${y}':x2='${x}':y2='${bottom}':x3='${right}':y3='${bottom}':sense=destination:eval=frame:interpolation=linear,format=rgba[${label}];\n`;
+}
+export function buildRenderSpec(
+  media: MediaInfo,
+  template: Template,
+  options: EditOptions,
+  input: string,
+  templatePath: string,
+  output: string,
+  filterPath: string,
+  second?: SecondVideo,
+) {
+  options = parseOptions(options);
+  const fps = template.fps;
+  const target = options.foldEffect === 'on' ? 'projected' : 'content';
+  const secondIndex = options.foldEffect === 'on' ? 3 : 2;
+  const transition = unfoldTime(template);
+  let filter = projectVideo(media, template, options, 0, second ? 'closedVideo' : target);
+  if (second) {
+    const openOptions = {
+      ...parseOptions(second.options),
+      audioMode: options.audioMode,
+      foldEffect: options.foldEffect,
+    };
+    filter += projectVideo(second.info, template, openOptions, secondIndex, 'openVideo', transition);
+    filter += `[closedVideo][openVideo]overlay=0:0:enable='gte(t,${transition})':shortest=1[${target}];\n`;
+  }
+  filter +=
     (options.foldEffect === 'on' ? foldFilter(template) : '') +
     `color=c=white:s=${template.width}x${template.height}:r=${fps}:d=${template.duration}[base];\n` +
     `[base][content]overlay=0:0:shortest=1[screen];\n` +
@@ -213,10 +251,20 @@ export function buildRenderSpec(
   const audioInput =
     options.audioMode === 'template' && template.hasAudio
       ? 1
-      : options.audioMode === 'user' && media.hasAudio
+      : options.audioMode === 'user' && (media.hasAudio || second?.info.hasAudio)
         ? 0
         : null;
-  if (audioInput !== null)
+  if (options.audioMode === 'user' && second && audioInput !== null) {
+    const segment = (index: number, hasAudio: boolean, duration: number, label: string) =>
+      (hasAudio
+        ? `[${index}:a:0]asetpts=PTS-STARTPTS,aresample=48000:async=1:first_pts=0,aformat=channel_layouts=stereo,apad,atrim=duration=${duration}`
+        : `anullsrc=r=48000:cl=stereo:d=${duration}`) + `[${label}];\n`;
+    filter +=
+      ';\n' +
+      segment(0, media.hasAudio, transition, 'closedAudio') +
+      segment(secondIndex, second.info.hasAudio, template.duration - transition, 'openAudio') +
+      '[closedAudio][openAudio]concat=n=2:v=0:a=1[audio]';
+  } else if (audioInput !== null)
     filter += `;\n[${audioInput}:a:0]asetpts=PTS-STARTPTS,aresample=48000:async=1:first_pts=0,apad,atrim=duration=${template.duration}[audio]`;
   const args = [
     '-hide_banner',
@@ -247,6 +295,24 @@ export function buildRenderSpec(
     templatePath,
     ...(options.foldEffect === 'on'
       ? ['-threads', '1', '-i', templatePath.replace(/[^\\/]+$/, 'fold-mask.mkv')]
+      : []),
+    ...(second
+      ? [
+          '-threads',
+          '2',
+          '-stream_loop',
+          '-1',
+          '-ss',
+          String(second.options.startTime),
+          '-t',
+          String(template.duration),
+          '-protocol_whitelist',
+          'file,pipe',
+          '-format_whitelist',
+          'mov,matroska,webm',
+          '-i',
+          second.file,
+        ]
       : []),
     '-filter_complex_script',
     filterPath,

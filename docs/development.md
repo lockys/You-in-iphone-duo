@@ -1,5 +1,11 @@
 # 開發與部署指南
 
+## 雙影片 / Two videos
+
+可分別匯入「摺疊時」與「展開時」的影片，每段各受 `MAX_UPLOAD_MB` 限制，開始時間、縮放與位置獨立保存。模板在第 76 個影格（約 2.536 秒）切換到展開影片，第二段從自己的開始時間播放；短片循環。只提供任一段時，該段套用全程。模板音訊保持完整；選擇上傳音訊時依同一時間點切換，無聲段落補靜音。
+
+Each clip uploads through the existing queue independently. Rendering both clips uses one worker slot. The render API accepts `openUploadId`, `openStartTime`, `openScale`, `openOffsetX`, and `openOffsetY` alongside the original fields. Both asset IDs must belong to the current session; local and Blob-backed rendering validate ownership and release all temporary copies.
+
 ## 排隊 / Queue
 
 上傳接收、預覽轉檔與影片合成共用工作上限。預設同時處理 2 件、最多排隊 20 件，最長等待 60 秒；可透過 `MAX_CONCURRENT_JOBS`、`MAX_QUEUED_JOBS`、`QUEUE_TIMEOUT_MS` 調整。介面提供三語排隊位置、持續更新與取消。佇列滿或等候逾時會提示重試，不會無限累積請求。

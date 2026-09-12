@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { rm, writeFile } from 'node:fs/promises';
-import { buildRenderSpec, MediaError, parseOptions } from '../../src/lib/composition';
+import { buildRenderSpec, MediaError, parseOptions, parseSecondOptions } from '../../src/lib/composition';
 import { binary, probe, runProcess } from '../../src/lib/process';
 import {
   checkQuota,
@@ -30,11 +30,13 @@ export async function POST(request: Request, quotaAlreadyAcquired = false) {
             send({ type: 'progress', stage: 'queued', position }),
           );
       let source: Asset | undefined;
+      let openSource: Asset | undefined;
       let result: Asset | undefined;
       try {
         result = await createAsset(auth.owner);
         const upload = await receiveMultipart(request, result.dir, signal);
         const options = parseOptions(upload.fields);
+        const openOptions = parseSecondOptions(upload.fields, options);
         if (upload.file && upload.fields.uploadId) throw new MediaError('error.oneSource');
         send({ type: 'progress', stage: 'processing', progress: 5 });
         let input = upload.file;
@@ -47,6 +49,11 @@ export async function POST(request: Request, quotaAlreadyAcquired = false) {
         }
         if (!input) throw new MediaError('error.uploadFirst');
         info ??= await probe(input, signal);
+        if (upload.fields.openUploadId) {
+          openSource = findAsset(upload.fields.openUploadId, auth.owner);
+          openSource.busy++;
+          if (!openSource.info) throw new MediaError('error.uploadFirst');
+        }
         const output = path.join(result.dir, 'result.mp4');
         const filter = path.join(result.dir, 'filter.txt');
         const spec = buildRenderSpec(
@@ -57,6 +64,7 @@ export async function POST(request: Request, quotaAlreadyAcquired = false) {
           templatePath('8150.mp4'),
           output,
           filter,
+          openSource ? { file: openSource.file, info: openSource.info!, options: openOptions } : undefined,
         );
         await writeFile(filter, spec.filter);
         send({ type: 'progress', stage: 'compositing', progress: 10 });
@@ -82,6 +90,7 @@ export async function POST(request: Request, quotaAlreadyAcquired = false) {
         try {
           if (result && signal.aborted) await dispose(result);
           if (source) await releaseAsset(source);
+          if (openSource) await releaseAsset(openSource);
           if (result) await releaseAsset(result);
         } finally {
           await release();

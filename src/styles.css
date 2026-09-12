@@ -1202,3 +1202,31 @@ a.rail-primary:hover {
     transition: none !important;
   }
 }
+
+.clip-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.clip-picker button {
+  min-width: 0;
+  min-height: 64px;
+  text-align: left;
+  border: 1px solid #ddd7eb;
+  border-radius: 12px;
+  padding: 12px;
+  background: transparent;
+}
+.clip-picker button[aria-pressed='true'] {
+  background: #f1edff;
+  border-color: #7151cc;
+}
+.clip-picker span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  margin-top: 5px;
+}

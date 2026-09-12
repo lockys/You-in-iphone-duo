@@ -180,7 +180,7 @@ export async function receiveMultipart(request: Request, dir: string, signal: Ab
     parser = Busboy({
       headers: { 'content-type': contentType },
       // Busboy emits limit when the threshold is reached, even at exact EOF.
-      limits: { fileSize: maxBytes + 1, files: 1, fields: 8, fieldSize: 256, parts: 9 },
+      limits: { fileSize: maxBytes + 1, files: 1, fields: 13, fieldSize: 256, parts: 14 },
     });
   } catch {
     throw new MediaError('error.invalidForm');
@@ -208,7 +208,20 @@ export async function receiveMultipart(request: Request, dir: string, signal: Ab
   });
   parser.on('field', (name, value, info) => {
     if (
-      !['uploadId', 'startTime', 'scale', 'offsetX', 'offsetY', 'audioMode', 'foldEffect'].includes(name) ||
+      ![
+        'uploadId',
+        'startTime',
+        'scale',
+        'offsetX',
+        'offsetY',
+        'audioMode',
+        'foldEffect',
+        'openUploadId',
+        'openStartTime',
+        'openScale',
+        'openOffsetX',
+        'openOffsetY',
+      ].includes(name) ||
       name in fields ||
       info.valueTruncated
     )

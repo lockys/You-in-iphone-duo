@@ -4,7 +4,15 @@ import { POST as render } from '../server/routes/render';
 import { GET as getTemplate } from '../server/routes/template';
 import { POST as upload } from '../server/routes/upload';
 import { GET as media, DELETE as remove } from '../server/routes/media';
-import { checkQuota, cacheRoot, checkOrigin, receiveMultipart } from '../src/lib/server';
+import {
+  checkQuota,
+  cacheRoot,
+  checkOrigin,
+  receiveMultipart,
+  createAsset,
+  dispose,
+  releaseAsset,
+} from '../src/lib/server';
 import { localQueue, waitForSlot } from '../src/lib/work-queue';
 import { binary, runProcess } from '../src/lib/process';
 import { locales, translate } from '../src/lib/i18n';
@@ -32,6 +40,21 @@ beforeAll(async () => {
 });
 afterAll(() => vi.unstubAllEnvs());
 describe('原生 API 整合', () => {
+  it('第二段影片必須屬於目前使用者，不能讀取他人的暫存 ID', async () => {
+    const foreign = await createAsset('another-owner');
+    try {
+      const form = new FormData();
+      form.set('file', await fixture());
+      form.set('openUploadId', foreign.id);
+      expect((await events(await render(request('/api/render', form)))).at(-1)).toMatchObject({
+        type: 'error',
+        code: 'error.expired',
+      });
+    } finally {
+      await dispose(foreign);
+      await releaseAsset(foreign);
+    }
+  });
   it('滿載時先回報排隊，空出名額後完成真正的上傳轉檔', async () => {
     const controller = new AbortController();
     const a = await waitForSlot(localQueue, controller.signal);

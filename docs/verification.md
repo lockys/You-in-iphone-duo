@@ -1,5 +1,13 @@
 # 驗證紀錄
 
+## 2026-09-12：排隊與雙影片
+
+- lint、typecheck、Modern.js Node production build 通過；Vitest 13 檔、105 項全數通過。
+- Production Playwright 的 editor、queue、dual-video 三組流程共 27 項全數通過（桌機 Chromium、手機 Chromium、手機 WebKit）；双影片流程另重複執行 6 次通過。
+- 使用真實紅色有聲與藍色無聲短片合成，驗證切換前後影格顏色、第二段靜音、獨立設定、單影片回退，以及跨使用者素材存取拒絕。
+- `evidence/dual-output.mp4` 通過 1920×1080、H.264、yuv420p、模板時長、faststart 與完整解碼。已目視檢查摺疊／展開影格與手機預覽，手部、邊框與背景保留。
+- Blob API 使用隔離儲存替身並執行真實 FFmpeg；以上不代表正式 Vercel 部署或實體手機驗收。
+
 2026-09-10，Windows、Node.js 24.15.0、Modern.js 3.9.0、React 19.3.0、TypeScript 6.0.3。前端使用 Rsbuild／Rspack；原生 FFmpeg 6.1.1、ffprobe 4.0.2。
 
 ## 摺疊效果

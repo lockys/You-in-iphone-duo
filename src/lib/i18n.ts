@@ -87,6 +87,16 @@ export const messages = {
   closeError: ['關閉錯誤訊息', '关闭错误信息', 'Dismiss error'],
   reload: ['重新載入', '重新加载', 'Reload'],
   'stage.uploading': ['正在上傳', '正在上传', 'Uploading'],
+  clipSelect: ['選擇影片狀態', '选择视频状态', 'Choose video state'],
+  clipClosed: ['摺疊時的影片', '折叠时的视频', 'Folded video'],
+  clipOpen: ['展開時的影片', '展开时的视频', 'Unfolded video'],
+  clipEmpty: ['尚未上傳', '尚未上传', 'No video yet'],
+  clipHint: [
+    '可各上傳一段，每段最多 {size} MB；只有一段時會套用全程。',
+    '可各上传一段，每段最多 {size} MB；只有一段时会应用全程。',
+    'Add one video for each state, up to {size} MB each. A single video plays throughout.',
+  ],
+  clipRemove: ['移除此段影片', '移除此段视频', 'Remove this video'],
   'stage.queued': ['排隊中，第 {position} 位', '排队中，第 {position} 位', 'Queued · position {position}'],
   'error.queueFull': [
     '目前排隊人數已滿，請稍後再試。',

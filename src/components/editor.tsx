@@ -56,9 +56,31 @@ export default function Editor() {
   const [template, setTemplate] = useState<Template>();
   const [limit, setLimit] = useState(MAX_UPLOAD_BYTES);
   const [storage, setStorage] = useState<'disk' | 'blob'>('disk');
-  const [media, setMedia] = useState<Imported>();
+  const [closedMedia, setClosedMedia] = useState<Imported>();
+  const [openMedia, setOpenMedia] = useState<Imported>();
+  const [clip, setClip] = useState<'closed' | 'open'>('closed');
+  const media = clip === 'closed' ? closedMedia : openMedia;
+  const setMedia = clip === 'closed' ? setClosedMedia : setOpenMedia;
   const [result, setResult] = useState<Result>();
-  const [options, setOptions] = useState<EditOptions>(defaultOptions);
+  const [clipOptions, setClipOptions] = useState({ closed: defaultOptions, open: defaultOptions });
+  const options = clipOptions[clip];
+  const updateClipOptions = useCallback(
+    (side: 'closed' | 'open', value: React.SetStateAction<EditOptions>) => {
+      setClipOptions((previous) => {
+        const next = typeof value === 'function' ? value(previous[side]) : value;
+        const other = side === 'closed' ? 'open' : 'closed';
+        return {
+          ...previous,
+          [side]: next,
+          [other]: { ...previous[other], audioMode: next.audioMode, foldEffect: next.foldEffect },
+        };
+      });
+    },
+    [],
+  );
+  const setOptions = (value: React.SetStateAction<EditOptions>) => updateClipOptions(clip, value);
+  const primaryMedia = closedMedia || openMedia;
+  const primaryOptions = closedMedia ? clipOptions.closed : clipOptions.open;
   const [busy, setBusy] = useState<'upload' | 'render' | null>(null);
   const [status, setStatus] = useState('');
   const [progress, setProgress] = useState(0);
@@ -70,7 +92,9 @@ export default function Editor() {
   const [downloaded, setDownloaded] = useState(false);
   const picker = useRef<HTMLInputElement>(null);
   const active = useRef<{ abort: () => void } | null>(null);
-  const assets = useRef<{ source?: string; result?: string; pendingSource?: string }>({});
+  const assets = useRef<{ source?: string; openSource?: string; result?: string; pendingSource?: string }>(
+    {},
+  );
   const reportError = useCallback((code: ErrorCode) => setError(new MediaError(code)), []);
   const loadTemplate = useCallback(() => {
     void fetch('/api/template')
@@ -89,6 +113,7 @@ export default function Editor() {
     return () => {
       active.current?.abort();
       erase(assets.current.source);
+      erase(assets.current.openSource);
       erase(assets.current.result);
       erase(assets.current.pendingSource);
     };
@@ -98,6 +123,7 @@ export default function Editor() {
       if (event.persisted) return;
       active.current?.abort();
       erase(assets.current.source);
+      erase(assets.current.openSource);
       erase(assets.current.result);
       erase(assets.current.pendingSource);
     };
@@ -172,12 +198,15 @@ export default function Editor() {
       } else data.append('file', file);
       const done = await postMultipart('/api/upload', data, xhr, onProgress, locale);
       const id = String(done.uploadId);
-      erase(assets.current.source);
+      const assetKey = clip === 'closed' ? 'source' : 'openSource';
+      erase(assets.current[assetKey]);
       erase(assets.current.result);
-      assets.current = { source: id };
+      assets.current[assetKey] = id;
+      assets.current.pendingSource = undefined;
+      assets.current.result = undefined;
       const preview = String(done.previewUrl);
       setResult(undefined);
-      setOptions(defaultOptions);
+      setOptions({ ...defaultOptions, audioMode: options.audioMode, foldEffect: options.foldEffect });
       setMedia({ id, name: file.name, size: Number(done.size), info: done.info as MediaInfo, preview });
       setStatus('');
     } catch (e) {
@@ -194,7 +223,7 @@ export default function Editor() {
     }
   };
   const render = async () => {
-    if (!media || busy) return;
+    if (!primaryMedia || busy) return;
     erase(assets.current.result);
     assets.current.result = undefined;
     setResult(undefined);
@@ -205,8 +234,13 @@ export default function Editor() {
     setProgress(0);
     setElapsed(0);
     const data = new FormData();
-    data.append('uploadId', media.id);
-    for (const [key, value] of Object.entries(options)) data.append(key, String(value));
+    data.append('uploadId', primaryMedia.id);
+    for (const [key, value] of Object.entries(primaryOptions)) data.append(key, String(value));
+    if (closedMedia && openMedia) {
+      data.append('openUploadId', openMedia.id);
+      for (const key of ['startTime', 'scale', 'offsetX', 'offsetY'] as const)
+        data.append(`open${key[0].toUpperCase()}${key.slice(1)}`, String(clipOptions.open[key]));
+    }
     const xhr = new XMLHttpRequest();
     active.current = xhr;
     try {
@@ -280,6 +314,21 @@ export default function Editor() {
                 onChange={(e) => void importFile(e.target.files?.[0])}
                 disabled={!!busy || !template}
               />
+              <div className="clip-picker" role="group" aria-label={t('clipSelect')}>
+                {(['closed', 'open'] as const).map((side) => (
+                  <button
+                    type="button"
+                    key={side}
+                    aria-pressed={clip === side}
+                    disabled={!!busy}
+                    onClick={() => setClip(side)}
+                  >
+                    <strong>{t(side === 'closed' ? 'clipClosed' : 'clipOpen')}</strong>
+                    <span>{(side === 'closed' ? closedMedia : openMedia)?.name || t('clipEmpty')}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="subtle">{t('clipHint', { size: Math.round(limit / 1024 ** 2) })}</p>
               <button
                 type="button"
                 className={`dropzone ${dragging ? 'dragging' : ''} ${media ? 'has-file' : ''}`}
@@ -324,6 +373,21 @@ export default function Editor() {
                   <span className="upload-plus">+</span>
                 )}
               </button>
+              {media && (
+                <button
+                  type="button"
+                  className="text-button"
+                  disabled={!!busy}
+                  onClick={() => {
+                    erase(assets.current[clip === 'closed' ? 'source' : 'openSource']);
+                    assets.current[clip === 'closed' ? 'source' : 'openSource'] = undefined;
+                    setMedia(undefined);
+                    edit();
+                  }}
+                >
+                  {t('clipRemove')}
+                </button>
+              )}
             </div>
             <div className={`preview-card${result ? ' result-card' : ''}`}>
               {!result && (
@@ -337,15 +401,22 @@ export default function Editor() {
               <div className="video-stage" aria-busy={!!busy}>
                 {result ? (
                   <ResultPlayer url={result.playUrl} onError={reportError} />
-                ) : !media ? (
+                ) : !primaryMedia ? (
                   <DemoPreview />
                 ) : template ? (
                   <Preview
                     template={template}
-                    source={media?.preview}
-                    media={media?.info}
-                    options={options}
-                    onChange={setOptions}
+                    source={primaryMedia.preview}
+                    media={primaryMedia.info}
+                    options={primaryOptions}
+                    onChange={(value) => updateClipOptions(closedMedia ? 'closed' : 'open', value)}
+                    second={
+                      closedMedia && openMedia
+                        ? { source: openMedia.preview, media: openMedia.info, options: clipOptions.open }
+                        : undefined
+                    }
+                    onSecondChange={(value) => updateClipOptions('open', value)}
+                    editSide={closedMedia && openMedia ? clip : 'closed'}
                     disabled={!!busy}
                     onError={reportError}
                   />
@@ -383,6 +454,7 @@ export default function Editor() {
                 {t('controlsTitle')}
               </h2>
             </div>
+            <p className="subtle">{t(clip === 'closed' ? 'clipClosed' : 'clipOpen')}</p>
             <fieldset disabled={disabled}>
               <div className="control-group">
                 <div className="control-label">
@@ -516,7 +588,10 @@ export default function Editor() {
                     </label>
                   ))}
                 </div>
-                {options.audioMode === 'user' && media && !media.info.hasAudio && <p>{t('noAudio')}</p>}
+                {options.audioMode === 'user' &&
+                  primaryMedia &&
+                  !closedMedia?.info.hasAudio &&
+                  !openMedia?.info.hasAudio && <p>{t('noAudio')}</p>}
               </div>
             </fieldset>
             <div className="export-area">
@@ -582,7 +657,7 @@ export default function Editor() {
           <button
             type="button"
             className="rail-button rail-primary"
-            disabled={!media || !!busy || !template}
+            disabled={!primaryMedia || !!busy || !template}
             onClick={() => void render()}
             aria-label={busy ? stage(status) : t('render')}
             title={busy ? stage(status) : t('render')}

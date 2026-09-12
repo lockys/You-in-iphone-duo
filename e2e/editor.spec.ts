@@ -109,7 +109,7 @@ test('長影片不限秒數，可選 305 秒；超大替換檔仍保留編輯並
     await expect(page.locator('#scale')).toHaveValue('1.4');
     await expect(page.locator('#scale')).toBeEnabled();
     await expect(page.locator('#start-time')).toHaveValue('305');
-    await expect(page.getByText('long.mp4', { exact: true })).toBeAttached();
+    await expect(page.locator('.drop-copy').getByText('long.mp4', { exact: true })).toBeAttached();
     await expect(picker).toHaveValue('');
   }
   expect(requests).toEqual([]);

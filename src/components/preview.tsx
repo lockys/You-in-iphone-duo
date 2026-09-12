@@ -9,6 +9,7 @@ import {
   cover,
   frameAt,
   contentFrame,
+  unfoldTime,
   type EditOptions,
   type MediaInfo,
   type Template,
@@ -21,26 +22,41 @@ type Props = {
   media?: MediaInfo;
   options: EditOptions;
   onChange: (options: EditOptions) => void;
+  second?: { source: string; media: MediaInfo; options: EditOptions };
+  onSecondChange?: (options: EditOptions) => void;
+  editSide?: 'closed' | 'open';
   disabled: boolean;
   onError: (code: ErrorCode) => void;
 };
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
-export default function Preview({ template, source, media, options, onChange, disabled, onError }: Props) {
+export default function Preview({
+  template,
+  source,
+  media,
+  options,
+  onChange,
+  second,
+  onSecondChange,
+  editSide = 'closed',
+  disabled,
+  onError,
+}: Props) {
   const { t } = useLanguage();
   const canvas = useRef<HTMLCanvasElement>(null);
   const phone = useRef<HTMLVideoElement>(null);
   const content = useRef<HTMLVideoElement>(null);
-  const latest = useRef({ options, media, disabled, onChange });
+  const openContent = useRef<HTMLVideoElement>(null);
+  const latest = useRef({ options, media, disabled, onChange, second, onSecondChange });
   useEffect(() => {
-    latest.current = { options, media, disabled, onChange };
-  }, [options, media, disabled, onChange]);
+    latest.current = { options, media, disabled, onChange, second, onSecondChange };
+  }, [options, media, disabled, onChange, second, onSecondChange]);
   const [playing, setPlaying] = useState(false);
   const [frameReady, setFrameReady] = useState(false);
   const [needsGesture, setNeedsGesture] = useState(false);
   const userPaused = useRef(false);
   const playBoth = useCallback(() => {
     setNeedsGesture(false);
-    for (const player of [phone.current, content.current]) {
+    for (const player of [phone.current, content.current, openContent.current]) {
       if (!player) continue;
       player.muted = true;
       player.defaultMuted = true;
@@ -56,6 +72,7 @@ export default function Preview({ template, source, media, options, onChange, di
   useEffect(() => {
     const player = phone.current;
     const video = content.current;
+    const other = openContent.current;
     const target = canvas.current;
     if (!player || !target) return;
     setFrameReady(false);
@@ -81,28 +98,47 @@ export default function Preview({ template, source, media, options, onChange, di
       frame = requestAnimationFrame(draw);
       if (player.readyState < 2) return;
       const now = player.currentTime;
-      if (video && video.readyState >= 2 && Number.isFinite(video.duration)) {
-        const desired = (latest.current.options.startTime + now) % video.duration;
-        const distance = Math.abs(video.currentTime - desired);
-        if (!video.seeking && Math.min(distance, video.duration - distance) > 0.085)
-          video.currentTime = desired;
+      const open = latest.current.second && now >= unfoldTime(template);
+      const activeVideo = open ? other : video;
+      const opts = open ? latest.current.second!.options : latest.current.options;
+      const activeMedia = open ? latest.current.second!.media : latest.current.media;
+      if (activeVideo && activeVideo.readyState < 2) {
+        if (painted) {
+          painted = false;
+          setFrameReady(false);
+        }
+        return;
+      }
+      for (const [item, start, elapsed] of [
+        [video, latest.current.options.startTime, now],
+        [other, latest.current.second?.options.startTime || 0, Math.max(0, now - unfoldTime(template))],
+      ] as const) {
+        if (!item || item.readyState < 2 || !Number.isFinite(item.duration)) continue;
+        const desired = (start + elapsed) % item.duration;
+        const distance = Math.abs(item.currentTime - desired);
+        if (!item.seeking && Math.min(distance, item.duration - distance) > 0.085) item.currentTime = desired;
       }
       // Paused frames redraw when media or settings change, without repeating blur work.
-      const opts = latest.current.options;
-      const renderKey = `${now}:${video?.currentTime}:${video?.readyState}:${opts.scale}:${opts.offsetX}:${opts.offsetY}:${opts.foldEffect}`;
+      const renderKey = `${now}:${activeVideo?.currentTime}:${activeVideo?.readyState}:${opts.scale}:${opts.offsetX}:${opts.offsetY}:${opts.foldEffect}`;
       if (renderKey === lastRenderKey) return;
       if (!player.paused && Math.abs(now - lastDraw) < 1 / 32) return;
       lastRenderKey = renderKey;
       lastDraw = now;
       context.fillStyle = '#f1edff';
       context.fillRect(0, 0, target.width, target.height);
-      if (video && video.readyState >= 2 && latest.current.media) {
-        const rect = cover(latest.current.media, contentFrame(template, now, opts), opts);
+      if (activeVideo && activeVideo.readyState >= 2 && activeMedia) {
+        const rect = cover(activeMedia, contentFrame(template, now, opts), opts);
         const ratio = target.width / template.width;
-        context.drawImage(video, rect.x * ratio, rect.y * ratio, rect.width * ratio, rect.height * ratio);
+        context.drawImage(
+          activeVideo,
+          rect.x * ratio,
+          rect.y * ratio,
+          rect.width * ratio,
+          rect.height * ratio,
+        );
       }
       try {
-        if (video && video.readyState >= 2 && latest.current.media && opts.foldEffect === 'on')
+        if (activeVideo && activeVideo.readyState >= 2 && activeMedia && opts.foldEffect === 'on')
           paintFold(context, template, frameAt(template, now), now);
         fg.drawImage(player, 0, 0, target.width, target.height);
         const image = fg.getImageData(0, 0, target.width, target.height);
@@ -117,7 +153,7 @@ export default function Preview({ template, source, media, options, onChange, di
         }
         fg.putImageData(image, 0, 0);
         context.drawImage(foreground, 0, 0);
-        if (!painted && (!source || (video && video.readyState >= 2))) {
+        if (!painted && (!source || (activeVideo && activeVideo.readyState >= 2))) {
           painted = true;
           setFrameReady(true);
         }
@@ -138,20 +174,34 @@ export default function Preview({ template, source, media, options, onChange, di
     start();
     player.addEventListener('loadedmetadata', start);
     video?.addEventListener('loadedmetadata', start);
+    other?.addEventListener('loadedmetadata', start);
+    // WebKit can abort play() when a newly loaded clip is immediately seeked.
+    // Retry once decoded data becomes playable; an explicit pause still wins.
+    player.addEventListener('canplay', start);
+    video?.addEventListener('canplay', start);
+    other?.addEventListener('canplay', start);
     return () => {
       stopped = true;
       cancelAnimationFrame(frame);
       player.removeEventListener('loadedmetadata', start);
       video?.removeEventListener('loadedmetadata', start);
+      other?.removeEventListener('loadedmetadata', start);
+      player.removeEventListener('canplay', start);
+      video?.removeEventListener('canplay', start);
+      other?.removeEventListener('canplay', start);
       player.pause();
       video?.pause();
+      other?.pause();
     };
-  }, [template, source, onError, playBoth]);
+  }, [template, source, second?.source, onError, playBoth]);
 
   useEffect(() => {
     if (phone.current) phone.current.currentTime = 0;
     if (content.current?.readyState) content.current.currentTime = options.startTime;
   }, [options.startTime, source]);
+  useEffect(() => {
+    if (phone.current) phone.current.currentTime = editSide === 'open' ? unfoldTime(template) + 0.15 : 0;
+  }, [editSide, second?.source, second?.options.startTime, template]);
   const seek = (value: number) => {
     if (phone.current) phone.current.currentTime = value;
     setTime(value);
@@ -162,7 +212,12 @@ export default function Preview({ template, source, media, options, onChange, di
     pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (pointers.current.size === 2) {
       const [a, b] = [...pointers.current.values()];
-      pinch.current = { distance: Math.hypot(a.x - b.x, a.y - b.y), scale: latest.current.options.scale };
+      const current = latest.current;
+      const opts =
+        current.second && (phone.current?.currentTime || 0) >= unfoldTime(template)
+          ? current.second.options
+          : current.options;
+      pinch.current = { distance: Math.hypot(a.x - b.x, a.y - b.y), scale: opts.scale };
     }
   };
   const move = (event: PointerEvent<HTMLCanvasElement>) => {
@@ -170,21 +225,24 @@ export default function Preview({ template, source, media, options, onChange, di
     if (!previous || !media || disabled) return;
     const point = { x: event.clientX, y: event.clientY };
     pointers.current.set(event.pointerId, point);
-    const opts = latest.current.options;
+    const isOpen = latest.current.second && (phone.current?.currentTime || 0) >= unfoldTime(template);
+    const opts = isOpen ? latest.current.second!.options : latest.current.options;
+    const currentMedia = isOpen ? latest.current.second!.media : media;
+    const change = isOpen ? latest.current.onSecondChange! : onChange;
     if (pointers.current.size === 2 && pinch.current) {
       const [a, b] = [...pointers.current.values()];
       const distance = Math.hypot(a.x - b.x, a.y - b.y);
-      onChange({
+      change({
         ...opts,
         scale: clamp((pinch.current.scale * distance) / Math.max(1, pinch.current.distance), 1, 3),
       });
     } else if (pointers.current.size === 1) {
       const rect = contentFrame(template, phone.current?.currentTime || 0, opts);
-      const transform = cover(media, rect, opts);
+      const transform = cover(currentMedia, rect, opts);
       const ratio = template.width / event.currentTarget.getBoundingClientRect().width;
       const maxX = (transform.width - rect.width) / 2,
         maxY = (transform.height - rect.height) / 2;
-      onChange({
+      change({
         ...opts,
         offsetX: maxX > 1 ? clamp(opts.offsetX + ((point.x - previous.x) * ratio) / maxX, -1, 1) : 0,
         offsetY: maxY > 1 ? clamp(opts.offsetY + ((point.y - previous.y) * ratio) / maxY, -1, 1) : 0,
@@ -253,6 +311,20 @@ export default function Preview({ template, source, media, options, onChange, di
               onError={() => onError('error.previewExpired')}
             />
           )}
+          {second && (
+            <video
+              key={second.source}
+              ref={openContent}
+              crossOrigin="anonymous"
+              src={second.source}
+              loop
+              muted
+              playsInline
+              preload="auto"
+              className="source-video"
+              onError={() => onError('error.previewExpired')}
+            />
+          )}
         </div>
       </FloatingPreview>
       <div className="playback">
@@ -265,6 +337,7 @@ export default function Preview({ template, source, media, options, onChange, di
               userPaused.current = true;
               phone.current?.pause();
               content.current?.pause();
+              openContent.current?.pause();
             } else {
               userPaused.current = false;
               playBoth();

@@ -160,6 +160,17 @@ it('六分鐘影片跨冷啟動完成真實上傳、FFmpeg 合成、私有下載
   edit.set('uploadId', ticket.id);
   edit.set('audioMode', 'mute');
   edit.set('startTime', '305');
+  const openBytes = await readFile('tests/fixtures/grid.mp4');
+  const openTicket = await (
+    await api(req('/api/blob-ticket', { name: 'open.mp4', mime: 'video/mp4', size: openBytes.length }))
+  ).json();
+  store.set(openTicket.pathname, { bytes: openBytes, etag: 'open-source', uploadedAt: new Date() });
+  const openForm = new FormData();
+  openForm.set('cloudId', openTicket.id);
+  expect((await events(await api(req('/api/upload', openForm)))).at(-1)).toMatchObject({ type: 'complete' });
+  edit.set('openUploadId', openTicket.id);
+  edit.set('openStartTime', '0.2');
+  edit.set('openScale', '1.2');
   const rendered = await events(await api(req('/api/render', edit)));
   const done = rendered.at(-1);
   expect(done, JSON.stringify(rendered)).toMatchObject({

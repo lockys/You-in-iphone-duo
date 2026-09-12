@@ -1,7 +1,7 @@
 # You, in iPhoneDuo
 
-將你的影片放進 iPhone Duo，製作專屬迷因。
-Put your video inside iPhone Duo and make it a meme.
+將你的影片放進 iPhone Duo，製作專屬迷因；摺疊與展開可使用不同影片。
+Put your videos inside iPhone Duo, with a different clip for folded and unfolded states.
 
 ![You, in iPhoneDuo](docs/images/desktop.png)
 
