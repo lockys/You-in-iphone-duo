@@ -95,6 +95,7 @@ test('切換語言保留影片與調整值，處理中及成品仍可切換、�
   await page.getByLabel('Y position').fill('-0.3');
   await page.getByLabel('Start time', { exact: true }).fill('0.4');
   await page.getByRole('radio', { name: 'My video', exact: true }).check();
+  await expect(page.locator('.video-loader')).toHaveCount(0);
   const source = await page.locator('video.source-video').nth(1).getAttribute('src');
   await page.getByRole('combobox').selectOption('zh-Hans');
   await expect(page.getByLabel('画面缩放', { exact: true })).toHaveValue('1.4');

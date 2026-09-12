@@ -7,13 +7,13 @@ Put your videos inside iPhone Duo, with a different clip for folded and unfolded
 
 ## 繁體中文
 
-匯入 20 MB 以內的影片（不限秒數），即時預覽、調整構圖，再下載 MP4 分享到社群。支援摺疊效果、可拖曳的浮動預覽，以及繁體中文、簡體中文和英文介面。
+選擇一部或兩部影片（每部最多 20 MB、不限秒數），快速預覽、調整構圖，再下載 1080p MP4。支援摺疊效果、可拖曳的浮動預覽，以及繁體中文、簡體中文和英文介面。
 
 使用 Modern.js、Rspack 與原生 FFmpeg，在自己的電腦上執行。
 
 ## English
 
-Upload a video up to 20 MB, with no duration limit, preview and adjust the framing, then download an MP4 to share. Includes a fold effect, draggable floating preview, and Traditional Chinese, Simplified Chinese, and English interfaces.
+Choose one or two videos (up to 20 MB each, no duration limit), preview and adjust the framing, then download a 1080p MP4. Includes a fold effect, draggable floating preview, and Traditional Chinese, Simplified Chinese, and English interfaces.
 
 Built with Modern.js, Rspack, and native FFmpeg. Runs on your own computer.
 

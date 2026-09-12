@@ -124,6 +124,7 @@ test('匯入、同步預覽、位置縮放、產生、下載與重新編輯', as
   await expect(page.getByRole('switch', { name: '摺疊效果' })).toBeChecked();
   await expect(page.getByRole('switch', { name: '摺疊效果' })).toBeDisabled();
   await expect(page.getByLabel('選擇影片檔案')).toBeEnabled();
+  await expect(page.locator('.video-loader')).toHaveCount(0);
   await page.screenshot({ path: `evidence/ui-${testInfo.project.name}-empty.png`, fullPage: true });
   await page.getByLabel('選擇影片檔案').setInputFiles(path.resolve('tests/fixtures/portrait.mp4'));
   await expect(page.getByRole('button', { name: '產生迷因' })).toBeEnabled();
@@ -134,7 +135,12 @@ test('匯入、同步預覽、位置縮放、產生、下載與重新編輯', as
   await page.getByLabel('畫面縮放', { exact: true }).fill('1.5');
   await page.getByLabel('X 水平位置').fill('0.2');
   await page.getByLabel('Y 垂直位置').fill('-0.2');
+  const previewUpdate = page.waitForResponse(
+    (response) => response.url().includes('/api/preview') && response.status() === 200,
+  );
   await page.getByLabel('開始時間', { exact: true }).fill('0.5');
+  await previewUpdate;
+  await expect(page.locator('.video-loader')).toHaveCount(0);
   const canvas = page.getByTestId('preview-canvas');
   await page.getByTestId('preview-anchor').scrollIntoViewIfNeeded();
   await page.getByRole('button', { name: /暫停預覽|播放預覽/ }).evaluate((button: HTMLButtonElement) => {
@@ -166,7 +172,13 @@ test('匯入、同步預覽、位置縮放、產生、下載與重新編輯', as
   await page.mouse.move(box.x + box.width / 2 + 16, box.y + box.height / 2 + 8, { steps: 4 });
   await page.mouse.up();
   await expect(page.getByLabel('X 水平位置')).not.toHaveValue('0.2');
-  await page.screenshot({ path: `evidence/ui-${testInfo.project.name}-editing.png`, fullPage: true });
+  await expect(page.locator('.video-loader')).toHaveCount(0);
+  await page.evaluate(async () => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    for (let i = 0; i < 4; i++) await new Promise(requestAnimationFrame);
+  });
+  await expect(page.getByTestId('floating-preview')).toHaveCount(0);
+  await page.screenshot({ path: `evidence/ui-${testInfo.project.name}-editing.png` });
   await page.getByRole('button', { name: '重設位置' }).click();
   await expect(page.getByLabel('畫面縮放', { exact: true })).toHaveValue('1');
   await page.getByRole('radio', { name: '模板原音' }).check();

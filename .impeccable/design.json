@@ -1,0 +1,295 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-12T15:47:09.583Z",
+  "title": "Design System: You, in iPhoneDuo",
+  "extensions": {
+    "colorMeta": {
+      "bg": {
+        "role": "neutral",
+        "displayName": "Page white",
+        "tonalRamp": [
+          "oklch(15.0% 0.0000 89.9)",
+          "oklch(26.4% 0.0000 89.9)",
+          "oklch(37.9% 0.0000 89.9)",
+          "oklch(49.3% 0.0000 89.9)",
+          "oklch(60.7% 0.0000 89.9)",
+          "oklch(72.1% 0.0000 89.9)",
+          "oklch(83.6% 0.0000 89.9)",
+          "oklch(95.0% 0.0000 89.9)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Near-black ink",
+        "tonalRamp": [
+          "oklch(15.0% 0.0038 286.1)",
+          "oklch(26.4% 0.0038 286.1)",
+          "oklch(37.9% 0.0038 286.1)",
+          "oklch(49.3% 0.0038 286.1)",
+          "oklch(60.7% 0.0038 286.1)",
+          "oklch(72.1% 0.0038 286.1)",
+          "oklch(83.6% 0.0038 286.1)",
+          "oklch(95.0% 0.0038 286.1)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Secondary gray",
+        "tonalRamp": [
+          "oklch(15.0% 0.0079 286.1)",
+          "oklch(26.4% 0.0079 286.1)",
+          "oklch(37.9% 0.0079 286.1)",
+          "oklch(49.3% 0.0079 286.1)",
+          "oklch(60.7% 0.0079 286.1)",
+          "oklch(72.1% 0.0079 286.1)",
+          "oklch(83.6% 0.0079 286.1)",
+          "oklch(95.0% 0.0079 286.1)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Divider gray",
+        "tonalRamp": [
+          "oklch(15.0% 0.0068 286.3)",
+          "oklch(26.4% 0.0068 286.3)",
+          "oklch(37.9% 0.0068 286.3)",
+          "oklch(49.3% 0.0068 286.3)",
+          "oklch(60.7% 0.0068 286.3)",
+          "oklch(72.1% 0.0068 286.3)",
+          "oklch(83.6% 0.0068 286.3)",
+          "oklch(95.0% 0.0068 286.3)"
+        ]
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "Action blue",
+        "tonalRamp": [
+          "oklch(15.0% 0.1933 256.2)",
+          "oklch(26.4% 0.1933 256.2)",
+          "oklch(37.9% 0.1933 256.2)",
+          "oklch(49.3% 0.1933 256.2)",
+          "oklch(60.7% 0.1933 256.2)",
+          "oklch(72.1% 0.1933 256.2)",
+          "oklch(83.6% 0.1933 256.2)",
+          "oklch(95.0% 0.1933 256.2)"
+        ]
+      },
+      "soft": {
+        "role": "primary",
+        "displayName": "Soft blue",
+        "tonalRamp": [
+          "oklch(15.0% 0.0159 253.9)",
+          "oklch(26.4% 0.0159 253.9)",
+          "oklch(37.9% 0.0159 253.9)",
+          "oklch(49.3% 0.0159 253.9)",
+          "oklch(60.7% 0.0159 253.9)",
+          "oklch(72.1% 0.0159 253.9)",
+          "oklch(83.6% 0.0159 253.9)",
+          "oklch(95.0% 0.0159 253.9)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Surface gray",
+        "tonalRamp": [
+          "oklch(15.0% 0.0027 286.4)",
+          "oklch(26.4% 0.0027 286.4)",
+          "oklch(37.9% 0.0027 286.4)",
+          "oklch(49.3% 0.0027 286.4)",
+          "oklch(60.7% 0.0027 286.4)",
+          "oklch(72.1% 0.0027 286.4)",
+          "oklch(83.6% 0.0027 286.4)",
+          "oklch(95.0% 0.0027 286.4)"
+        ]
+      },
+      "accent-hover": {
+        "role": "primary",
+        "displayName": "Hover blue",
+        "tonalRamp": [
+          "oklch(15.0% 0.1989 256.0)",
+          "oklch(26.4% 0.1989 256.0)",
+          "oklch(37.9% 0.1989 256.0)",
+          "oklch(49.3% 0.1989 256.0)",
+          "oklch(60.7% 0.1989 256.0)",
+          "oklch(72.1% 0.1989 256.0)",
+          "oklch(83.6% 0.1989 256.0)",
+          "oklch(95.0% 0.1989 256.0)"
+        ]
+      },
+      "audio-selected": {
+        "role": "primary",
+        "displayName": "Selected audio fill",
+        "tonalRamp": [
+          "oklch(15.0% 0.0222 254.4)",
+          "oklch(26.4% 0.0222 254.4)",
+          "oklch(37.9% 0.0222 254.4)",
+          "oklch(49.3% 0.0222 254.4)",
+          "oklch(60.7% 0.0222 254.4)",
+          "oklch(72.1% 0.0222 254.4)",
+          "oklch(83.6% 0.0222 254.4)",
+          "oklch(95.0% 0.0222 254.4)"
+        ]
+      },
+      "audio-selected-text": {
+        "role": "primary",
+        "displayName": "Selected audio text",
+        "tonalRamp": [
+          "oklch(15.0% 0.1603 255.7)",
+          "oklch(26.4% 0.1603 255.7)",
+          "oklch(37.9% 0.1603 255.7)",
+          "oklch(49.3% 0.1603 255.7)",
+          "oklch(60.7% 0.1603 255.7)",
+          "oklch(72.1% 0.1603 255.7)",
+          "oklch(83.6% 0.1603 255.7)",
+          "oklch(95.0% 0.1603 255.7)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Preview heading",
+        "purpose": "The first and largest editor section heading."
+      },
+      "title": {
+        "displayName": "Section title",
+        "purpose": "Upload and adjustment section headings."
+      },
+      "helper": {
+        "displayName": "Supporting text",
+        "purpose": "Hints and metadata."
+      }
+    },
+    "shadows": [
+      {
+        "name": "floating-preview",
+        "value": "0 8px 32px #27233329",
+        "purpose": "Separate the draggable translucent preview from the editor."
+      },
+      {
+        "name": "processing-progress",
+        "value": "0 8px 32px #00000018",
+        "purpose": "Temporary processing panel beside the rail."
+      },
+      {
+        "name": "top-error",
+        "value": "0 8px 28px #30212324",
+        "purpose": "Keep a recoverable error visible above page content."
+      }
+    ],
+    "motion": [
+      {
+        "name": "button-feedback",
+        "value": "background 0.15s, color 0.15s",
+        "purpose": "Standard button feedback; disabled by reduced-motion preference."
+      },
+      {
+        "name": "loading-spinner",
+        "value": "spin 1s linear infinite",
+        "purpose": "Loading feedback; disabled by reduced-motion preference."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "stack-editor",
+        "value": "1040px"
+      },
+      {
+        "name": "uploaded-replacement-row",
+        "value": "950px"
+      },
+      {
+        "name": "mobile",
+        "value": "740px"
+      },
+      {
+        "name": "compact-phone",
+        "value": "360px"
+      },
+      {
+        "name": "short-viewport-height",
+        "value": "420px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary rail action",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The blue render or download action on the right rail.",
+      "html": "<button class=\"ds-primary\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><path d=\"m4 11 16-4M4 11v9h16V7M4 11 2 5l17-4 1 6M6 4l3 6m4-8 3 6\"/></svg><span>產生</span></button>",
+      "css": ".ds-primary{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;width:52px;min-height:60px;padding:7px 2px;border:0;border-radius:26px;background:var(--accent,#0071e3);color:white;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans TC','Microsoft JhengHei',sans-serif;cursor:pointer;transition:background .15s,color .15s}.ds-primary span{font-size:11px;font-weight:600;line-height:1.2}.ds-primary:hover:enabled{background:#0077ed}.ds-primary:disabled{color:#797580;background:#efedf2;cursor:not-allowed}.ds-primary:focus-visible,.ds-reset:focus-visible,.ds-number:focus-visible,.ds-mode button:focus-visible,.ds-upload:focus-visible,.ds-header a:focus-visible,.ds-header select:focus-visible,.ds-clip:focus-visible{outline:3px solid var(--accent,#0071e3);outline-offset:4px}@media(prefers-reduced-motion:reduce){button{transition:none}}"
+    },
+    {
+      "name": "Reset control",
+      "kind": "button",
+      "refersTo": "button-reset",
+      "description": "Quiet full-width reset for framing adjustments.",
+      "html": "<button class=\"ds-reset\">重設位置</button>",
+      "css": ".ds-reset{width:100%;min-height:44px;border:0;border-radius:10px;background:#f5f5f7;color:var(--muted,#626267);font:12px -apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans TC','Microsoft JhengHei',sans-serif;cursor:pointer;transition:background .15s,color .15s}.ds-reset:hover:enabled{background:var(--soft,#edf5ff);color:var(--accent,#0071e3)}.ds-reset:disabled{opacity:.45;cursor:not-allowed}.ds-primary:focus-visible,.ds-reset:focus-visible,.ds-number:focus-visible,.ds-mode button:focus-visible,.ds-upload:focus-visible,.ds-header a:focus-visible,.ds-header select:focus-visible,.ds-clip:focus-visible{outline:3px solid var(--accent,#0071e3);outline-offset:4px}@media(prefers-reduced-motion:reduce){button{transition:none}}"
+    },
+    {
+      "name": "Start-time field",
+      "kind": "input",
+      "refersTo": "number-input",
+      "description": "Compact numeric field with tabular numerals and a separate unit.",
+      "html": "<label class=\"ds-field\">開始時間 <span><input class=\"ds-number\" type=\"number\" value=\"0\" min=\"0\" step=\"0.05\" aria-label=\"開始時間\"> 秒</span></label>",
+      "css": ".ds-field{display:flex;align-items:center;justify-content:space-between;gap:8px;font:600 14px -apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans TC','Microsoft JhengHei',sans-serif;color:var(--ink,#1d1d1f)}.ds-field span{font-size:12px;font-weight:400;color:var(--muted,#626267)}.ds-number{width:70px;min-height:44px;border:0;border-radius:8px;background:#f5f5f7;color:var(--ink,#1d1d1f);caret-color:var(--accent,#0071e3);text-align:center;font:inherit;font-variant-numeric:tabular-nums}.ds-number:disabled{cursor:not-allowed}.ds-primary:focus-visible,.ds-reset:focus-visible,.ds-number:focus-visible,.ds-mode button:focus-visible,.ds-upload:focus-visible,.ds-header a:focus-visible,.ds-header select:focus-visible,.ds-clip:focus-visible{outline:3px solid var(--accent,#0071e3);outline-offset:4px}"
+    },
+    {
+      "name": "Video mode selector",
+      "kind": "custom",
+      "refersTo": "mode-selected",
+      "description": "Single is the default; the selected segment is white.",
+      "html": "<div class=\"ds-mode\" role=\"group\" aria-label=\"影片模式\"><button aria-pressed=\"true\">一部影片</button><button aria-pressed=\"false\">兩部影片</button></div>",
+      "css": ".ds-mode{display:inline-flex;max-width:100%;padding:4px;gap:4px;border-radius:12px;background:#f5f5f7}.ds-mode button{min-height:44px;border:0;border-radius:8px;padding:8px 22px;color:var(--muted,#626267);background:transparent;font:15px -apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans TC','Microsoft JhengHei',sans-serif;cursor:pointer;transition:background .15s,color .15s}.ds-mode button[aria-pressed=true]{background:#fff;color:var(--ink,#1d1d1f)}.ds-mode button:hover:enabled{color:var(--ink,#1d1d1f)}.ds-mode button:disabled{opacity:.45;cursor:not-allowed}@media(max-width:740px){.ds-mode{display:flex}.ds-mode button{flex:1;padding:8px 10px}}.ds-primary:focus-visible,.ds-reset:focus-visible,.ds-number:focus-visible,.ds-mode button:focus-visible,.ds-upload:focus-visible,.ds-header a:focus-visible,.ds-header select:focus-visible,.ds-clip:focus-visible{outline:3px solid var(--accent,#0071e3);outline-offset:4px}@media(prefers-reduced-motion:reduce){button{transition:none}}"
+    },
+    {
+      "name": "Uploaded single video",
+      "kind": "card",
+      "refersTo": "upload-surface",
+      "description": "Uploaded file details with visible replacement wording, including on mobile.",
+      "html": "<button class=\"ds-upload\"><svg width=\"23\" height=\"23\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><rect x=\"2\" y=\"2\" width=\"20\" height=\"20\" rx=\"2\"/><path d=\"M7 2v20M17 2v20M2 7h5m-5 5h5m-5 5h5M17 7h5m-5 5h5m-5 5h5\"/></svg><span class=\"ds-copy\"><strong>portrait.mp4</strong><span>1.50 秒 · 360 × 640 · 0.2 MB</span></span><span class=\"ds-replace\">更換影片 ↗</span></button>",
+      "css": ".ds-upload{width:100%;display:flex;align-items:center;gap:14px;min-height:96px;padding:22px;border:0;border-radius:12px;background:#f5f5f7;color:var(--ink,#1d1d1f);text-align:left;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans TC','Microsoft JhengHei',sans-serif;cursor:pointer;transition:background .15s,color .15s}.ds-upload>svg{flex-shrink:0;color:var(--accent,#0071e3)}.ds-upload:hover:enabled{background:#edf5ff}.ds-copy{display:flex;flex-direction:column;gap:8px;min-width:0}.ds-copy strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px;font-weight:600;line-height:1.5}.ds-copy>span{font-size:12px;line-height:1.5;color:var(--muted,#626267);font-variant-numeric:tabular-nums}.ds-replace{margin-left:auto;white-space:nowrap;color:var(--accent,#0071e3);font-size:11px}.ds-upload:disabled{opacity:.45;cursor:not-allowed}@media(max-width:950px){.ds-upload{display:grid;grid-template-columns:40px minmax(0,1fr);column-gap:14px;row-gap:8px}.ds-replace{grid-column:2;margin-left:0;font-size:12px}}@media(max-width:740px){.ds-upload{padding:16px 12px}.ds-copy strong{font-size:14px}}.ds-primary:focus-visible,.ds-reset:focus-visible,.ds-number:focus-visible,.ds-mode button:focus-visible,.ds-upload:focus-visible,.ds-header a:focus-visible,.ds-header select:focus-visible,.ds-clip:focus-visible{outline:3px solid var(--accent,#0071e3);outline-offset:4px}@media(prefers-reduced-motion:reduce){button{transition:none}}"
+    },
+    {
+      "name": "Header identity and language",
+      "kind": "nav",
+      "description": "Existing name hierarchy and borderless language selection. The installed logo remains authoritative; this isolated snippet previews text and controls only.",
+      "html": "<header class=\"ds-header\"><a href=\"#brand\"><span>You, in</span> <strong>iPhoneDuo</strong></a><select aria-label=\"語言\"><option>繁體中文</option><option>简体中文</option><option>English</option></select></header>",
+      "css": ".ds-header{display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:76px;border-bottom:1px solid #e8e8ed;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans TC','Microsoft JhengHei',sans-serif;color:var(--ink,#1d1d1f)}.ds-header a{color:inherit;text-decoration:none;font-size:25px;line-height:1.2;font-weight:400;letter-spacing:-.025em}.ds-header strong{font-weight:750}.ds-header select{min-height:44px;max-width:140px;padding:0 12px;border:0;border-radius:8px;background:transparent;color:inherit;font:13px -apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans TC','Microsoft JhengHei',sans-serif;cursor:pointer}@media(max-width:740px){.ds-header{min-height:68px;gap:8px}.ds-header a{font-size:19px}.ds-header a>span{display:block;font-size:15px}.ds-header select{max-width:108px;padding:0 4px;font-size:12px}}.ds-primary:focus-visible,.ds-reset:focus-visible,.ds-number:focus-visible,.ds-mode button:focus-visible,.ds-upload:focus-visible,.ds-header a:focus-visible,.ds-header select:focus-visible,.ds-clip:focus-visible{outline:3px solid var(--accent,#0071e3);outline-offset:4px}"
+    },
+    {
+      "name": "Selected folded clip",
+      "kind": "custom",
+      "description": "The dual-video picker preserves its size while changing border thickness.",
+      "html": "<button class=\"ds-clip\" aria-pressed=\"true\"><svg width=\"48\" height=\"44\" viewBox=\"0 0 48 44\" fill=\"none\" aria-hidden=\"true\"><rect x=\"14\" y=\"3\" width=\"20\" height=\"38\" rx=\"5\" stroke=\"currentColor\" stroke-width=\"1.5\"/></svg><strong>摺疊畫面</strong><span>portrait.mp4</span></button>",
+      "css": ".ds-clip{display:grid;justify-items:center;gap:8px;min-height:136px;min-width:0;padding:18px 12px;border:1px solid var(--line,#d2d2d7);border-radius:12px;background:#fff;color:var(--ink,#1d1d1f);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans TC','Microsoft JhengHei',sans-serif;cursor:pointer;transition:background .15s,color .15s}.ds-clip[aria-pressed=true]{border:2px solid var(--accent,#0071e3);padding:17px 11px}.ds-clip strong{font-size:14px;font-weight:600}.ds-clip span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--muted,#626267)}.ds-clip:disabled{opacity:.45;cursor:not-allowed}@media(max-width:740px){.ds-clip{min-height:126px;padding:14px 8px}.ds-clip[aria-pressed=true]{padding:13px 7px}}.ds-primary:focus-visible,.ds-reset:focus-visible,.ds-number:focus-visible,.ds-mode button:focus-visible,.ds-upload:focus-visible,.ds-header a:focus-visible,.ds-header select:focus-visible,.ds-clip:focus-visible{outline:3px solid var(--accent,#0071e3);outline-offset:4px}@media(prefers-reduced-motion:reduce){button{transition:none}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The preview is the surface.",
+    "overview": "Preserve the existing name and phone mark in `public/brand/mark.svg`. The confirmed direction is inspired by Apple's website: white and light gray surfaces, system typography, blue actions and a large video preview. The existing purple logo remains an identity asset; it does not define the interaction palette or imply Apple affiliation.\n\nThis is the implemented editor, documented from the final CSS cascade in `src/styles.css` and its React components. It is a code-led design with no approved image comp. The preview, upload and adjustment areas sit directly on the page, with space and typography establishing hierarchy.",
+    "keyCharacteristics": [
+      "A large working preview with quiet surrounding controls.",
+      "Neutral surfaces and blue interaction states.",
+      "Main actions remain on the right; errors appear at the top.",
+      "The existing phone logo and multilingual product name stay recognizable."
+    ],
+    "rules": [],
+    "dos": [
+      "Do preserve the product name and existing phone logo.",
+      "Do keep the video visually dominant and the surrounding editor quiet.",
+      "Do reserve space for right-side actions at every viewport width.",
+      "Do retain visible replacement wording after upload on mobile.",
+      "Do preserve visible keyboard focus, readable states and reduced-motion support."
+    ],
+    "donts": [
+      "Don't reintroduce boxed cards around every editor section.",
+      "Don't replace the system typography or blue action palette with the logo's purple.",
+      "Don't hide errors below the content or move primary actions into a mobile bottom bar.",
+      "Don't confuse dragging the floating preview with changing the video crop.",
+      "Don't describe local viewport screenshots as physical-phone or deployed verification."
+    ]
+  }
+}

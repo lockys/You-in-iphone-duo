@@ -19,10 +19,14 @@ import { paintFold } from '@/lib/fold-preview';
 type Props = {
   template: Template;
   source?: string;
+  localTimeline?: boolean;
+  pendingLabel?: string;
+  previewFailed?: boolean;
+  onPreviewRetry?: () => void;
   media?: MediaInfo;
   options: EditOptions;
   onChange: (options: EditOptions) => void;
-  second?: { source: string; media: MediaInfo; options: EditOptions };
+  second?: { source: string; media: MediaInfo; options: EditOptions; localTimeline?: boolean };
   onSecondChange?: (options: EditOptions) => void;
   editSide?: 'closed' | 'open';
   disabled: boolean;
@@ -32,6 +36,10 @@ const clamp = (value: number, min: number, max: number) => Math.max(min, Math.mi
 export default function Preview({
   template,
   source,
+  localTimeline = false,
+  pendingLabel,
+  previewFailed,
+  onPreviewRetry,
   media,
   options,
   onChange,
@@ -46,12 +54,33 @@ export default function Preview({
   const phone = useRef<HTMLVideoElement>(null);
   const content = useRef<HTMLVideoElement>(null);
   const openContent = useRef<HTMLVideoElement>(null);
-  const latest = useRef({ options, media, disabled, onChange, second, onSecondChange });
+  const latest = useRef({
+    options,
+    media,
+    disabled,
+    onChange,
+    second,
+    onSecondChange,
+    localTimeline,
+    pendingLabel,
+  });
   useEffect(() => {
-    latest.current = { options, media, disabled, onChange, second, onSecondChange };
-  }, [options, media, disabled, onChange, second, onSecondChange]);
+    latest.current = {
+      options,
+      media,
+      disabled,
+      onChange,
+      second,
+      onSecondChange,
+      localTimeline,
+      pendingLabel,
+    };
+  }, [options, media, disabled, onChange, second, onSecondChange, localTimeline, pendingLabel]);
   const [playing, setPlaying] = useState(false);
-  const [frameReady, setFrameReady] = useState(false);
+  // A previous clip's ready state must not hide the loader on a new clip.
+  const [paintedSources, setPaintedSources] = useState<{ source?: string; second?: string }>();
+  const frameReady =
+    !!paintedSources && paintedSources.source === source && paintedSources.second === second?.source;
   const [needsGesture, setNeedsGesture] = useState(false);
   const userPaused = useRef(false);
   const playBoth = useCallback(() => {
@@ -75,9 +104,8 @@ export default function Preview({
     const other = openContent.current;
     const target = canvas.current;
     if (!player || !target) return;
-    setFrameReady(false);
+    setPaintedSources(undefined);
     setNeedsGesture(false);
-    userPaused.current = false;
     const context = target.getContext('2d');
     const foreground = document.createElement('canvas');
     foreground.width = target.width;
@@ -92,11 +120,18 @@ export default function Preview({
       lastUI = -1,
       stopped = false;
     let lastRenderKey = '';
+    const invalidate = () => {
+      lastRenderKey = '';
+    };
+    for (const item of [player, video, other]) {
+      item?.addEventListener('seeked', invalidate);
+      item?.addEventListener('loadeddata', invalidate);
+    }
     let painted = false;
     const draw = () => {
       if (stopped) return;
       frame = requestAnimationFrame(draw);
-      if (player.readyState < 2) return;
+      if (player.readyState < 2 || player.seeking || latest.current.pendingLabel) return;
       const now = player.currentTime;
       const open = latest.current.second && now >= unfoldTime(template);
       const activeVideo = open ? other : video;
@@ -105,26 +140,32 @@ export default function Preview({
       if (activeVideo && activeVideo.readyState < 2) {
         if (painted) {
           painted = false;
-          setFrameReady(false);
+          setPaintedSources(undefined);
         }
         return;
       }
       for (const [item, start, elapsed] of [
-        [video, latest.current.options.startTime, now],
-        [other, latest.current.second?.options.startTime || 0, Math.max(0, now - unfoldTime(template))],
+        [video, latest.current.localTimeline ? 0 : latest.current.options.startTime, now],
+        [
+          other,
+          latest.current.second?.localTimeline ? 0 : latest.current.second?.options.startTime || 0,
+          Math.max(0, now - unfoldTime(template)),
+        ],
       ] as const) {
         if (!item || item.readyState < 2 || !Number.isFinite(item.duration)) continue;
         const desired = (start + elapsed) % item.duration;
         const distance = Math.abs(item.currentTime - desired);
         if (!item.seeking && Math.min(distance, item.duration - distance) > 0.085) item.currentTime = desired;
       }
+      // currentTime changes before the decoded frame does, especially on paused WebKit videos.
+      if (activeVideo?.seeking) return;
       // Paused frames redraw when media or settings change, without repeating blur work.
       const renderKey = `${now}:${activeVideo?.currentTime}:${activeVideo?.readyState}:${opts.scale}:${opts.offsetX}:${opts.offsetY}:${opts.foldEffect}`;
       if (renderKey === lastRenderKey) return;
       if (!player.paused && Math.abs(now - lastDraw) < 1 / 32) return;
       lastRenderKey = renderKey;
       lastDraw = now;
-      context.fillStyle = '#f1edff';
+      context.fillStyle = '#f5f5f7';
       context.fillRect(0, 0, target.width, target.height);
       if (activeVideo && activeVideo.readyState >= 2 && activeMedia) {
         const rect = cover(activeMedia, contentFrame(template, now, opts), opts);
@@ -155,7 +196,7 @@ export default function Preview({
         context.drawImage(foreground, 0, 0);
         if (!painted && (!source || (activeVideo && activeVideo.readyState >= 2))) {
           painted = true;
-          setFrameReady(true);
+          setPaintedSources({ source, second: second?.source });
         }
       } catch {
         stopped = true;
@@ -183,6 +224,10 @@ export default function Preview({
     return () => {
       stopped = true;
       cancelAnimationFrame(frame);
+      for (const item of [player, video, other]) {
+        item?.removeEventListener('seeked', invalidate);
+        item?.removeEventListener('loadeddata', invalidate);
+      }
       player.removeEventListener('loadedmetadata', start);
       video?.removeEventListener('loadedmetadata', start);
       other?.removeEventListener('loadedmetadata', start);
@@ -197,8 +242,8 @@ export default function Preview({
 
   useEffect(() => {
     if (phone.current) phone.current.currentTime = 0;
-    if (content.current?.readyState) content.current.currentTime = options.startTime;
-  }, [options.startTime, source]);
+    if (content.current?.readyState) content.current.currentTime = localTimeline ? 0 : options.startTime;
+  }, [options.startTime, source, localTimeline]);
   useEffect(() => {
     if (phone.current) phone.current.currentTime = editSide === 'open' ? unfoldTime(template) + 0.15 : 0;
   }, [editSide, second?.source, second?.options.startTime, template]);
@@ -255,7 +300,7 @@ export default function Preview({
   };
   return (
     <div className="preview-box">
-      <FloatingPreview key={source || 'empty'} enabled={!!media && !disabled}>
+      <FloatingPreview enabled={!!media && !disabled}>
         <div className="canvas-wrap">
           {!frameReady && !needsGesture && <VideoLoader label={t('loadingVideo')} />}
           {needsGesture && (
@@ -271,6 +316,14 @@ export default function Preview({
             >
               <Play size={28} aria-hidden="true" />
             </button>
+          )}
+          {pendingLabel && !previewFailed && <VideoLoader label={pendingLabel} />}
+          {previewFailed && (
+            <div className="preview-retry" role="status">
+              <button type="button" onClick={onPreviewRetry}>
+                {t('retryPreview')}
+              </button>
+            </div>
           )}
           <canvas
             ref={canvas}

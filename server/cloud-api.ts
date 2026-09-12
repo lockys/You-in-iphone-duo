@@ -1,3 +1,4 @@
+import { preparePreview, previewKey, previewStart } from '../src/lib/preview-segment';
 import { randomBytes } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
 import { Readable } from 'node:stream';
@@ -34,6 +35,8 @@ import {
   sweepCloud,
   updateCloudAsset,
   type CloudAsset,
+  type CloudSegment,
+  type PreviewPart,
 } from './cloud-store';
 
 type Send = (event: Record<string, unknown>) => void;
@@ -129,7 +132,7 @@ async function original(asset: CloudAsset, signal: AbortSignal) {
 }
 async function publishFile(
   asset: CloudAsset,
-  part: 'preview.mp4' | 'result.mp4',
+  part: PreviewPart | 'result.mp4',
   file: string,
   signal: AbortSignal,
 ) {
@@ -250,14 +253,23 @@ async function upload(request: Request) {
       );
       local = findAsset(String(done.uploadId), auth.owner);
       await publishFile(asset, 'preview.mp4', local.preview!, signal);
-      const ready: CloudAsset = { ...asset, status: 'ready', info: local.info };
+      const ready: CloudAsset = {
+        ...asset,
+        status: 'ready',
+        info: local.info,
+        segments: [
+          { key: previewKey(0), startTime: 0, duration: Number(done.previewDuration), part: 'preview.mp4' },
+        ],
+      };
       await updateCloudAsset(ready, claimed.etag);
       send({
         type: 'complete',
         uploadId: asset.id,
         info: local.info,
         size: asset.size,
-        previewUrl: cloudMediaUrl(ready),
+        previewUrl: `${cloudMediaUrl(ready)}&segment=${previewKey(0)}`,
+        previewStartTime: 0,
+        previewDuration: done.previewDuration,
       });
     } catch (error) {
       await removeIfPresent(asset);
@@ -266,6 +278,88 @@ async function upload(request: Request) {
     } finally {
       try {
         if (local) await dispose(local);
+      } finally {
+        await release?.();
+      }
+    }
+  });
+}
+async function preview(request: Request) {
+  checkOrigin(request);
+  assertCloud();
+  const form = await fields(request);
+  if ([...form].some(([key]) => !['uploadId', 'startTime'].includes(key) || form.getAll(key).length !== 1))
+    throw new MediaError('error.invalidFields');
+  const auth = session(request);
+  const { value: source } = await getCloudAsset(String(form.get('uploadId')), auth.owner);
+  if (source.kind !== 'source' || source.status !== 'ready' || !source.info)
+    throw new MediaError('error.uploadFirst');
+  const start = previewStart(form.get('startTime'), source.info);
+  const key = previewKey(start);
+  return streamTask(request, auth.cookie, async (send, signal) => {
+    let release: (() => Promise<void>) | undefined;
+    let local: Asset | undefined;
+    let unpublished: PreviewPart | undefined;
+    const complete = (segment: CloudSegment) =>
+      send({
+        type: 'complete',
+        uploadId: source.id,
+        previewUrl: `${cloudMediaUrl(source)}&segment=${segment.key}`,
+        previewStartTime: segment.startTime,
+        previewDuration: segment.duration,
+      });
+    try {
+      release = await acquireCloud(request, signal, (position) =>
+        send({ type: 'progress', stage: 'queued', position }),
+      );
+      const fresh = (await getCloudAsset(source.id, auth.owner)).value;
+      const cached = fresh.segments?.find((item) => item.key === key);
+      if (cached) {
+        complete(cached);
+        return;
+      }
+      send({ type: 'progress', stage: 'processing', progress: 5 });
+      local = await createAsset(auth.owner);
+      local.info = source.info;
+      await pipeline(
+        Readable.fromWeb((await original(source, signal)) as import('node:stream/web').ReadableStream),
+        createWriteStream(local.file, { flags: 'wx', mode: 0o600 }),
+        { signal },
+      );
+      const segment = await preparePreview(local, start, signal, (progress) =>
+        send({ type: 'progress', stage: 'processing', progress }),
+      );
+      unpublished = `preview-${randomBytes(12).toString('hex')}.mp4`;
+      await publishFile(source, unpublished, segment.file, signal);
+      for (let attempt = 0; attempt < 12; attempt++) {
+        signal.throwIfAborted();
+        const current = await getCloudAsset(source.id, auth.owner);
+        const duplicate = current.value.segments?.find((item) => item.key === key);
+        if (duplicate) {
+          complete(duplicate);
+          return;
+        }
+        const next: CloudSegment = { key, startTime: start, duration: segment.duration, part: unpublished };
+        const segments = [...(current.value.segments || []), next];
+        const evicted = segments.splice(0, Math.max(0, segments.length - 4));
+        try {
+          await updateCloudAsset({ ...current.value, segments }, current.etag);
+        } catch (error) {
+          if (!(error instanceof MediaError && error.code === 'error.busy') || attempt === 11) throw error;
+          continue;
+        }
+        unpublished = undefined;
+        await blob.del(evicted.map((item) => assetKey(source.id, item.part))).catch(() => {});
+        complete(next);
+        return;
+      }
+    } finally {
+      try {
+        if (unpublished) await blob.del(assetKey(source.id, unpublished)).catch(() => {});
+        if (local) {
+          await dispose(local);
+          await releaseAsset(local);
+        }
       } finally {
         await release?.();
       }
@@ -368,6 +462,7 @@ export async function routeCloudApi(request: Request): Promise<Response> {
     if (pathname === '/api/blob-ticket' && request.method === 'POST') return await ticket(request);
     if (pathname === '/api/blob-upload' && request.method === 'POST') return await signUpload(request);
     if (pathname === '/api/upload' && request.method === 'POST') return await upload(request);
+    if (pathname === '/api/preview' && request.method === 'POST') return await preview(request);
     if (pathname === '/api/render' && request.method === 'POST') return await render(request);
     if (pathname === '/api/cleanup' && request.method === 'GET') {
       if (
@@ -394,7 +489,10 @@ export async function routeCloudApi(request: Request): Promise<Response> {
         return new Response(null, { status: 204 });
       }
       if (asset.status !== 'ready') throw new MediaError('error.previewPending', 404);
-      const { presignedUrl } = await cloudReadUrl(asset);
+      const { presignedUrl } = await cloudReadUrl(
+        asset,
+        new URL(request.url).searchParams.get('segment') || undefined,
+      );
       const location = new URL(request.url).searchParams.has('download')
         ? blob.getDownloadUrl(presignedUrl)
         : presignedUrl;

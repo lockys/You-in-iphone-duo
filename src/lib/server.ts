@@ -26,6 +26,7 @@ export type Asset = {
   dir: string;
   file: string;
   preview?: string;
+  segments?: import('./preview-segment').PreviewSegment[];
   info?: MediaInfo;
   size?: number;
   created: number;
@@ -352,7 +353,10 @@ export async function serveAsset(request: Request, id: string) {
     session(request).owner,
     new URL(request.url).searchParams.get('access') || undefined,
   );
-  const target = asset.preview || asset.file; // A preview capability never exposes the original upload.
+  const segmentKey = new URL(request.url).searchParams.get('segment');
+  const segment = segmentKey ? asset.segments?.find((item) => item.key === segmentKey) : undefined;
+  if (segmentKey && !segment) throw new MediaError('error.previewPending', 404);
+  const target = segment?.file || asset.preview || asset.file; // Never expose the original upload.
   if (!target) throw new MediaError('error.previewPending', 404);
   const size = (await stat(target)).size;
   let start = 0;

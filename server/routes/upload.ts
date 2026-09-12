@@ -1,5 +1,5 @@
-import path from 'node:path';
-import { binary, probe, runProcess } from '../../src/lib/process';
+import { preparePreview } from '../../src/lib/preview-segment';
+import { probe } from '../../src/lib/process';
 import { MediaError } from '../../src/lib/composition';
 import {
   checkQuota,
@@ -31,61 +31,17 @@ export async function POST(request: Request, quotaAlreadyAcquired = false) {
         send({ type: 'progress', stage: 'processing', progress: 5 });
         asset.info = await probe(upload.file, signal);
         asset.size = upload.size;
-        asset.preview = path.join(asset.dir, 'preview.mp4');
-        const tone = asset.info.hdr
-          ? 'zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,'
-          : '';
-        await runProcess(
-          binary('ffmpeg'),
-          [
-            '-v',
-            'error',
-            '-y',
-            '-threads',
-            '2',
-            '-protocol_whitelist',
-            'file,pipe',
-            '-i',
-            asset.file,
-            '-map',
-            '0:v:0',
-            '-vf',
-            `${tone}scale=${asset.info.width}:${asset.info.height},setsar=1,scale=w='min(960,iw)':h='min(720,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2,fps=30`,
-            '-an',
-            '-c:v',
-            'libx264',
-            '-threads',
-            '2',
-            '-preset',
-            'ultrafast',
-            '-crf',
-            '26',
-            '-pix_fmt',
-            'yuv420p',
-            '-movflags',
-            '+faststart',
-            '-map_metadata',
-            '-1',
-            '-progress',
-            'pipe:1',
-            asset.preview,
-          ],
-          {
-            signal,
-            onProgress: (seconds) =>
-              send({
-                type: 'progress',
-                stage: 'processing',
-                progress: Math.min(98, 5 + (90 * seconds) / asset!.info!.duration),
-              }),
-          },
+        const segment = await preparePreview(asset, 0, signal, (progress) =>
+          send({ type: 'progress', stage: 'processing', progress }),
         );
         send({
           type: 'complete',
           uploadId: asset.id,
           info: asset.info,
           size: asset.size,
-          previewUrl: mediaUrl(asset, true),
+          previewUrl: `${mediaUrl(asset, true)}&segment=${segment.key}`,
+          previewStartTime: segment.startTime,
+          previewDuration: segment.duration,
         });
       } catch (error) {
         if (asset) await dispose(asset);

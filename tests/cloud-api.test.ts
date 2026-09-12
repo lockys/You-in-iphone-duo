@@ -156,6 +156,18 @@ it('六分鐘影片跨冷啟動完成真實上傳、FFmpeg 合成、私有下載
   });
   vi.resetModules();
   ({ routeCloudApi: api } = await import('../server/cloud-api'));
+  const previewForm = new FormData();
+  previewForm.set('uploadId', ticket.id);
+  previewForm.set('startTime', '305');
+  const updated = (await events(await api(req('/api/preview', previewForm)))).at(-1)!;
+  expect(updated).toMatchObject({ type: 'complete', previewStartTime: 305 });
+  const keys = [...store.keys()];
+  expect((await events(await api(req('/api/preview', previewForm)))).at(-1)).toMatchObject({
+    previewUrl: updated.previewUrl,
+  });
+  expect([...store.keys()]).toEqual(keys);
+  expect((await api(req(String(updated.previewUrl)))).status).toBe(307);
+  expect((await api(req('/api/preview', previewForm, 'meme-session=' + 'b'.repeat(64)))).status).toBe(404);
   const edit = new FormData();
   edit.set('uploadId', ticket.id);
   edit.set('audioMode', 'mute');

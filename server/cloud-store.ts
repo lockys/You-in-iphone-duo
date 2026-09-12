@@ -10,6 +10,8 @@ export const cloudConfigured = () => !!(process.env.BLOB_STORE_ID || process.env
 const prefix = 'iphone-duo/v1/';
 const ttl = () => Number(process.env.MEDIA_TTL_MS || 1200000);
 const sourceRetentionMs = 30 * 60 * 1000;
+export type PreviewPart = 'preview.mp4' | `preview-${string}.mp4`;
+export type CloudSegment = { key: string; startTime: number; duration: number; part: PreviewPart };
 export type CloudAsset = {
   id: string;
   owner: string;
@@ -21,12 +23,18 @@ export type CloudAsset = {
   mime: string;
   extension: string;
   info?: MediaInfo;
+  segments?: CloudSegment[];
 };
 export function assertCloud() {
   if (!cloudConfigured()) throw new MediaError('error.cloudStorage', 503);
 }
-export function assetKey(id: string, part: 'manifest.json' | 'source' | 'preview.mp4' | 'result.mp4') {
+export function assetKey(id: string, part: 'manifest.json' | 'source' | PreviewPart | 'result.mp4') {
   if (!/^\d{13}-[a-f0-9]{48}$/.test(id)) throw new MediaError('error.expired', 404);
+  if (
+    !['manifest.json', 'source', 'preview.mp4', 'result.mp4'].includes(part) &&
+    !/^preview-[a-f0-9]{24}\.mp4$/.test(part)
+  )
+    throw new MediaError('error.invalidFields');
   return `${prefix}assets/${id}/${part}`;
 }
 export async function readJson<T>(key: string): Promise<{ value: T; etag: string } | null> {
@@ -93,13 +101,22 @@ export async function updateCloudAsset(asset: CloudAsset, etag: string) {
 export async function eraseCloudAsset(asset: CloudAsset, etag: string) {
   // Publish the tombstone first: an in-flight render cannot resurrect a deleted upload.
   await updateCloudAsset({ ...asset, status: 'deleted' }, etag);
-  await blob.del(['source', 'preview.mp4', 'result.mp4'].map((part) => assetKey(asset.id, part as 'source')));
+  await blob.del(
+    [
+      ...new Set(['source', 'preview.mp4', 'result.mp4', ...(asset.segments || []).map((item) => item.part)]),
+    ].map((part) => assetKey(asset.id, part as 'source')),
+  );
 }
 export function cloudMediaUrl(asset: CloudAsset) {
   return `/api/media/${asset.id}?access=${asset.readToken}`;
 }
-export async function cloudReadUrl(asset: CloudAsset) {
-  const pathname = assetKey(asset.id, asset.kind === 'source' ? 'preview.mp4' : 'result.mp4');
+export async function cloudReadUrl(asset: CloudAsset, key?: string) {
+  const segment = key ? asset.segments?.find((item) => item.key === key) : asset.segments?.at(-1);
+  if (key && !segment) throw new MediaError('error.previewPending', 404);
+  const pathname = assetKey(
+    asset.id,
+    asset.kind === 'source' ? segment?.part || 'preview.mp4' : 'result.mp4',
+  );
   const validUntil = Math.min(asset.expires, Date.now() + 60000);
   const token = await blob.issueSignedToken({ pathname, operations: ['get'], validUntil });
   return blob.presignUrl(token, { operation: 'get', pathname, validUntil, access: 'private' });

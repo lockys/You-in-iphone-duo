@@ -23,6 +23,16 @@ export function resolveLocale(value: unknown): Locale {
 export type MessageParams = Record<string, string | number>;
 // Each entry must provide all three languages, including accessible labels and errors.
 export const messages = {
+  modeSelect: ['影片模式', '视频模式', 'Video mode'],
+  modeSingle: ['一部影片', '一个视频', 'One video'],
+  modeDual: ['兩部影片', '两个视频', 'Two videos'],
+  loadingPreview: ['正在更新預覽…', '正在更新预览…', 'Updating preview…'],
+  previewUpdateFailed: [
+    '預覽更新失敗，請重試。',
+    '预览更新失败，请重试。',
+    'Couldn’t update the preview. Try again.',
+  ],
+  retryPreview: ['重試預覽', '重试预览', 'Retry preview'],
   title: [brandName, brandName, brandName],
   metaTitle: [brandName, brandName, brandName],
   metaDescription: [
