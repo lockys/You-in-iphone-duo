@@ -74,7 +74,7 @@ export function checkOrigin(request: Request) {
   if (!matches || request.headers.get('sec-fetch-site') === 'cross-site')
     throw new MediaError('error.origin', 403);
 }
-export function acquire(request: Request) {
+export function checkQuota(request: Request) {
   checkOrigin(request);
   const ip =
     process.env.TRUST_PROXY === '1'
@@ -85,19 +85,9 @@ export function acquire(request: Request) {
   for (const [k, v] of state.limits) if (now - v.time > 600000) state.limits.delete(k);
   const limit = state.limits.get(key) ?? { time: now, count: 0 };
   if (limit.count >= Number(process.env.RATE_LIMIT_MAX || 20)) throw new MediaError('error.rateLimit', 429);
-  if (state.active >= Number(process.env.MAX_CONCURRENT_JOBS || 2))
-    throw new MediaError('error.concurrent', 429);
   if (!state.limits.has(key) && state.limits.size >= 10000) throw new MediaError('error.busy', 429);
   limit.count++;
   state.limits.set(key, limit);
-  state.active++;
-  let released = false;
-  return () => {
-    if (!released) {
-      released = true;
-      state.active--;
-    }
-  };
 }
 async function sweep() {
   await mkdir(cacheRoot, { recursive: true, mode: 0o700 });

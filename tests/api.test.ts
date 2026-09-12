@@ -4,7 +4,8 @@ import { POST as render } from '../server/routes/render';
 import { GET as getTemplate } from '../server/routes/template';
 import { POST as upload } from '../server/routes/upload';
 import { GET as media, DELETE as remove } from '../server/routes/media';
-import { acquire, cacheRoot, checkOrigin, receiveMultipart } from '../src/lib/server';
+import { checkQuota, cacheRoot, checkOrigin, receiveMultipart } from '../src/lib/server';
+import { localQueue, waitForSlot } from '../src/lib/work-queue';
 import { binary, runProcess } from '../src/lib/process';
 import { locales, translate } from '../src/lib/i18n';
 let cookie = '';
@@ -31,6 +32,43 @@ beforeAll(async () => {
 });
 afterAll(() => vi.unstubAllEnvs());
 describe('原生 API 整合', () => {
+  it('滿載時先回報排隊，空出名額後完成真正的上傳轉檔', async () => {
+    const controller = new AbortController();
+    const a = await waitForSlot(localQueue, controller.signal);
+    const b = await waitForSlot(localQueue, controller.signal);
+    const form = new FormData();
+    form.set('file', await fixture());
+    try {
+      const response = await upload(request('/api/upload', form));
+      const reader = response.body!.getReader();
+      const first = await reader.read();
+      const text = new TextDecoder().decode(first.value);
+      expect(text).toContain('"stage":"queued"');
+      expect(text).toContain('"position":1');
+      await a();
+      let rest = '';
+      while (true) {
+        const item = await reader.read();
+        if (item.done) break;
+        rest += new TextDecoder().decode(item.value);
+      }
+      const done = rest
+        .trim()
+        .split('\n')
+        .map((line) => JSON.parse(line))
+        .at(-1);
+      expect(done).toMatchObject({ type: 'complete', info: { codec: 'h264' } });
+      await remove(
+        new Request(url + `/api/media/${done.uploadId}`, { method: 'DELETE', headers: { cookie } }),
+        {
+          params: Promise.resolve({ id: done.uploadId }),
+        },
+      );
+    } finally {
+      await a();
+      await b();
+    }
+  });
   it('六分鐘影片可匯入並從第 305 秒合成，API 僅宣告大小上限', async () => {
     const config = await (await getTemplate(new Request(url + '/api/template'))).json();
     expect(config).toMatchObject({ maxBytes: 20 * 1024 ** 2, maxDuration: null });
@@ -172,15 +210,11 @@ describe('原生 API 整合', () => {
         params: Promise.resolve({ id: String(id) }),
       });
   });
-  it('限制並行數及短時間重複要求', () => {
-    const a = acquire(new Request(url)),
-      b = acquire(new Request(url));
-    expect(() => acquire(new Request(url))).toThrow('目前有人');
-    a();
-    b();
+  it('限制短時間重複要求', () => {
+    checkQuota(new Request(url));
     const previous = process.env.RATE_LIMIT_MAX;
     process.env.RATE_LIMIT_MAX = '1';
-    expect(() => acquire(new Request(url))).toThrow('操作太頻繁');
+    expect(() => checkQuota(new Request(url))).toThrow('操作太頻繁');
     if (previous) process.env.RATE_LIMIT_MAX = previous;
     else delete process.env.RATE_LIMIT_MAX;
   });

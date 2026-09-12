@@ -23,6 +23,7 @@ import { POST as localUpload } from './routes/upload';
 import { POST as localRender } from './routes/render';
 import {
   acquireCloud,
+  checkCloudRate,
   assertCloud,
   assetKey,
   cloudMediaUrl,
@@ -151,32 +152,28 @@ async function removeIfPresent(asset: CloudAsset) {
 async function ticket(request: Request) {
   checkOrigin(request);
   assertCloud();
-  const release = await acquireCloud(request);
-  try {
-    const input = await jsonBody(request);
-    if (!input || typeof input !== 'object') throw new MediaError('error.invalidForm');
-    if (typeof input.name !== 'string' || typeof input.mime !== 'string' || typeof input.size !== 'number')
-      throw new MediaError('error.invalidForm');
-    validateFile(input.name, input.mime, input.size, maxBytes);
-    const auth = session(request);
-    const asset = await newCloudAsset(auth.owner, {
-      kind: 'source',
-      size: input.size,
-      mime: input.mime,
-      extension: input.name.split('.').at(-1)!.toLowerCase(),
-    });
-    return Response.json(
-      { id: asset.id, pathname: assetKey(asset.id, 'source') },
-      {
-        headers: {
-          ...(auth.cookie ? { 'Set-Cookie': auth.cookie } : {}),
-          'Cache-Control': 'private, no-store',
-        },
+  await checkCloudRate(request);
+  const input = await jsonBody(request);
+  if (!input || typeof input !== 'object') throw new MediaError('error.invalidForm');
+  if (typeof input.name !== 'string' || typeof input.mime !== 'string' || typeof input.size !== 'number')
+    throw new MediaError('error.invalidForm');
+  validateFile(input.name, input.mime, input.size, maxBytes);
+  const auth = session(request);
+  const asset = await newCloudAsset(auth.owner, {
+    kind: 'source',
+    size: input.size,
+    mime: input.mime,
+    extension: input.name.split('.').at(-1)!.toLowerCase(),
+  });
+  return Response.json(
+    { id: asset.id, pathname: assetKey(asset.id, 'source') },
+    {
+      headers: {
+        ...(auth.cookie ? { 'Set-Cookie': auth.cookie } : {}),
+        'Cache-Control': 'private, no-store',
       },
-    );
-  } finally {
-    await release();
-  }
+    },
+  );
 }
 async function signUpload(request: Request) {
   checkOrigin(request);
@@ -220,18 +217,15 @@ async function upload(request: Request) {
   const found = await getCloudAsset(String(form.get('cloudId')), auth.owner);
   if (found.value.kind !== 'source' || found.value.status !== 'pending')
     throw new MediaError('error.busy', 409);
-  const release = await acquireCloud(request);
-  let claimed;
-  try {
-    claimed = await updateCloudAsset({ ...found.value, status: 'processing' }, found.etag);
-  } catch (error) {
-    await release();
-    throw error;
-  }
+  const claimed = await updateCloudAsset({ ...found.value, status: 'processing' }, found.etag);
   const asset = found.value;
   return streamTask(request, auth.cookie, async (send, signal) => {
     let local: Asset | undefined;
+    let release: (() => Promise<void>) | undefined;
     try {
+      release = await acquireCloud(request, signal, (position) =>
+        send({ type: 'progress', stage: 'queued', position }),
+      );
       const source = await original(asset, signal);
       const boundary = `meme-${randomBytes(12).toString('hex')}`;
       async function* multipart() {
@@ -270,8 +264,11 @@ async function upload(request: Request) {
       await blob.del(assetKey(asset.id, 'preview.mp4')).catch(() => {});
       throw error;
     } finally {
-      if (local) await dispose(local);
-      await release();
+      try {
+        if (local) await dispose(local);
+      } finally {
+        await release?.();
+      }
     }
   });
 }
@@ -283,12 +280,15 @@ async function render(request: Request) {
   const { value: source } = await getCloudAsset(String(form.get('uploadId')), auth.owner);
   if (source.kind !== 'source' || source.status !== 'ready' || !source.info)
     throw new MediaError('error.uploadFirst');
-  const release = await acquireCloud(request);
   return streamTask(request, auth.cookie, async (send, signal) => {
     let local: Asset | undefined;
     let output: Asset | undefined;
     let result: CloudAsset | undefined;
+    let release: (() => Promise<void>) | undefined;
     try {
+      release = await acquireCloud(request, signal, (position) =>
+        send({ type: 'progress', stage: 'queued', position }),
+      );
       local = await createAsset(auth.owner);
       local.info = source.info;
       send({ type: 'progress', stage: 'processing', progress: 3 });
@@ -316,12 +316,15 @@ async function render(request: Request) {
       if (result) await removeIfPresent(result);
       throw error;
     } finally {
-      if (output) await dispose(output);
-      if (local) {
-        await dispose(local);
-        await releaseAsset(local);
+      try {
+        if (output) await dispose(output);
+        if (local) {
+          await dispose(local);
+          await releaseAsset(local);
+        }
+      } finally {
+        await release?.();
       }
-      await release();
     }
   });
 }

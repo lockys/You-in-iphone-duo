@@ -18,6 +18,7 @@ export default defineConfig({
       testMatch: [
         'editor.spec.ts',
         'fold-effect.spec.ts',
+        'queue.spec.ts',
         'i18n.spec.ts',
         'duo.spec.ts',
         'sharing.spec.ts',
@@ -32,6 +33,7 @@ export default defineConfig({
       testMatch: [
         'editor.spec.ts',
         'fold-effect.spec.ts',
+        'queue.spec.ts',
         'i18n.spec.ts',
         'duo.spec.ts',
         'sharing.spec.ts',

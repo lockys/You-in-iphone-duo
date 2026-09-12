@@ -1,5 +1,13 @@
 # 開發與部署指南
 
+## 排隊 / Queue
+
+上傳接收、預覽轉檔與影片合成共用工作上限。預設同時處理 2 件、最多排隊 20 件，最長等待 60 秒；可透過 `MAX_CONCURRENT_JOBS`、`MAX_QUEUED_JOBS`、`QUEUE_TIMEOUT_MS` 調整。介面提供三語排隊位置、持續更新與取消。佇列滿或等候逾時會提示重試，不會無限累積請求。
+
+Node 單一程序使用記憶體 FIFO 佇列；Vercel／`MEDIA_STORAGE=blob` 使用私有 Blob 的條件寫入，共用跨實例佇列。Vercel 原始影片直接上傳 Blob，不佔 FFmpeg 名額；輪到工作後才下載至處理主機。排隊不保存影片內容，只保存隨機工作 ID、期限與執行狀態。取消／完成會釋放名額，失聯租約到期後自動回收。
+
+Waiting counts toward `REQUEST_TIMEOUT_MS` (default 240 seconds) and the hosting platform's request limit. This is a bounded, request-bound queue, not a background job service: closing the page cancels the job; timed-out jobs must be retried. Keep the wait plus processing budget within the platform limit. Disk mode coordinates one Node process only; multiple replicas must use the shared Blob mode. Blob coordination uses storage requests and inherits the storage service's latency and availability.
+
 在本機執行的完整 Modern.js 網站：匯入影片、自動填入 `8150.mp4` 手機綠幕、即時調整與輸出 MP4。正式輸出使用 **原生 FFmpeg**，不依賴付費轉碼服務；正式 API 不使用 mock 或 ffmpeg.wasm。
 
 ![You, in iPhoneDuo 編輯器與右側浮動操作列](images/desktop.png)

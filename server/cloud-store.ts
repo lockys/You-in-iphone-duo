@@ -2,6 +2,8 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import * as blob from '@vercel/blob';
 import { MediaError } from '../src/lib/errors';
 import type { MediaInfo } from '../src/lib/composition';
+import { waitForSlot, type QueueEntry, type QueueStore } from '../src/lib/work-queue';
+import { setTimeout as delay } from 'node:timers/promises';
 
 export const cloudEnabled = () => process.env.VERCEL === '1' || process.env.MEDIA_STORAGE === 'blob';
 export const cloudConfigured = () => !!(process.env.BLOB_STORE_ID || process.env.BLOB_READ_WRITE_TOKEN);
@@ -104,7 +106,7 @@ export async function cloudReadUrl(asset: CloudAsset) {
 }
 
 // Blob conditional writes make rate limits and FFmpeg slots shared across cold starts.
-export async function acquireCloud(request: Request) {
+export async function checkCloudRate(request: Request) {
   assertCloud();
   const now = Date.now();
   const bucket = Math.floor(now / 600000);
@@ -128,24 +130,36 @@ export async function acquireCloud(request: Request) {
     }
   }
   if (!counted) throw new MediaError('error.busy', 429);
-  for (let slot = 0; slot < Number(process.env.MAX_CONCURRENT_JOBS || 2); slot++) {
-    const slotKey = `${prefix}slots/${slot}.json`;
-    const found = await readJson<{ until: number }>(slotKey);
-    if (found && found.value.until > now) continue;
-    try {
-      const lease = await writeJson(
-        slotKey,
-        { until: now + Number(process.env.REQUEST_TIMEOUT_MS || 240000) + 15000 },
-        found?.etag,
-      );
-      return async () => {
-        await writeJson(slotKey, { until: 0 }, lease.etag).catch(() => {});
-      };
-    } catch {
-      /* Another instance claimed this slot. */
+}
+
+export const cloudQueue: QueueStore = {
+  async update(change) {
+    assertCloud();
+    const key = `${prefix}queue/state.json`;
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const found = await readJson<QueueEntry[]>(key);
+      const entries = found?.value ?? [];
+      const previous = JSON.stringify(entries);
+      const result = change(entries);
+      if (previous === JSON.stringify(entries)) return result;
+      try {
+        await writeJson(key, entries, found?.etag);
+        return result;
+      } catch (error) {
+        if (!(error instanceof blob.BlobPreconditionFailedError) || attempt === 11) throw error;
+        await delay(20 + Math.random() * 80);
+      }
     }
-  }
-  throw new MediaError('error.concurrent', 429);
+    throw new MediaError('error.busy', 503);
+  },
+};
+export async function acquireCloud(
+  request: Request,
+  signal = request.signal,
+  onPosition?: (position: number) => void,
+) {
+  await checkCloudRate(request);
+  return waitForSlot(cloudQueue, signal, onPosition);
 }
 
 export async function sweepCloud() {

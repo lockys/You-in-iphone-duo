@@ -3,7 +3,7 @@ import { rm, writeFile } from 'node:fs/promises';
 import { buildRenderSpec, MediaError, parseOptions } from '../../src/lib/composition';
 import { binary, probe, runProcess } from '../../src/lib/process';
 import {
-  acquire,
+  checkQuota,
   createAsset,
   dispose,
   findAsset,
@@ -17,16 +17,22 @@ import {
   streamTask,
   type Asset,
 } from '../../src/lib/server';
+import { localQueue, waitForSlot } from '../../src/lib/work-queue';
 export async function POST(request: Request, quotaAlreadyAcquired = false) {
-  let release: (() => void) | undefined;
   try {
-    release = quotaAlreadyAcquired ? () => {} : acquire(request);
+    if (!quotaAlreadyAcquired) checkQuota(request);
     const auth = session(request);
     const template = await loadTemplate();
-    const result = await createAsset(auth.owner);
     return streamTask(request, auth.cookie, async (send, signal) => {
+      const release = quotaAlreadyAcquired
+        ? async () => {}
+        : await waitForSlot(localQueue, signal, (position) =>
+            send({ type: 'progress', stage: 'queued', position }),
+          );
       let source: Asset | undefined;
+      let result: Asset | undefined;
       try {
+        result = await createAsset(auth.owner);
         const upload = await receiveMultipart(request, result.dir, signal);
         const options = parseOptions(upload.fields);
         if (upload.file && upload.fields.uploadId) throw new MediaError('error.oneSource');
@@ -70,17 +76,19 @@ export async function POST(request: Request, quotaAlreadyAcquired = false) {
         result.info = await probe(output, signal);
         send({ type: 'complete', resultId: result.id, url: mediaUrl(result), info: result.info });
       } catch (error) {
-        await dispose(result);
+        if (result) await dispose(result);
         throw error;
       } finally {
-        if (signal.aborted) await dispose(result);
-        if (source) await releaseAsset(source);
-        await releaseAsset(result);
-        release?.();
+        try {
+          if (result && signal.aborted) await dispose(result);
+          if (source) await releaseAsset(source);
+          if (result) await releaseAsset(result);
+        } finally {
+          await release();
+        }
       }
     });
   } catch (error) {
-    release?.();
     return jsonError(error, request);
   }
 }

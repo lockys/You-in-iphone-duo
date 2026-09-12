@@ -39,6 +39,7 @@ import { postMultipart, type ProgressEvent } from '@/lib/client-upload';
 type Imported = { id: string; name: string; size: number; info: MediaInfo; preview: string };
 type Result = { id: string; url: string; playUrl: string };
 const stageKeys: Record<string, MessageKey> = {
+  queued: 'stage.queued',
   uploading: 'stage.uploading',
   processing: 'stage.processing',
   compositing: 'stage.compositing',
@@ -51,7 +52,7 @@ function erase(id?: string) {
 
 export default function Editor() {
   const { locale, changeLanguage, t } = useLanguage();
-  const stage = (status: string) => t(stageKeys[status] || 'working');
+  const stage = (status: string) => t(stageKeys[status] || 'working', { position: queuePosition });
   const [template, setTemplate] = useState<Template>();
   const [limit, setLimit] = useState(MAX_UPLOAD_BYTES);
   const [storage, setStorage] = useState<'disk' | 'blob'>('disk');
@@ -61,6 +62,7 @@ export default function Editor() {
   const [busy, setBusy] = useState<'upload' | 'render' | null>(null);
   const [status, setStatus] = useState('');
   const [progress, setProgress] = useState(0);
+  const [queuePosition, setQueuePosition] = useState(1);
   const [error, setError] = useState<MediaError | null>(null);
   const [dragging, setDragging] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -112,6 +114,7 @@ export default function Editor() {
     if (event.type === 'progress') {
       setStatus(event.stage || 'processing');
       setProgress(Math.round(event.progress || 0));
+      if (event.stage === 'queued') setQueuePosition(Number(event.position) || 1);
     }
   };
   const importFile = async (file?: File) => {
@@ -589,16 +592,20 @@ export default function Editor() {
             ) : (
               <Clapperboard size={22} aria-hidden="true" />
             )}
-            <span>{busy ? `${progress}%` : t('actionRender')}</span>
+            <span>{busy ? (status === 'queued' ? stage(status) : `${progress}%`) : t('actionRender')}</span>
           </button>
         )}
         {busy && (
           <div className="progress-region" role="status" aria-live="polite">
             <div>
               <span>{stage(status)}…</span>
-              <span>{progress}%</span>
+              {status !== 'queued' && <span>{progress}%</span>}
             </div>
-            <progress max="100" value={progress} aria-label={t('progress')} />
+            <progress
+              max="100"
+              value={status === 'queued' ? undefined : progress}
+              aria-label={t('progress')}
+            />
             <p className="progress-bottom">{t('elapsed', { seconds: elapsed })}</p>
           </div>
         )}

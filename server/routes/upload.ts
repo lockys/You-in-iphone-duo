@@ -2,7 +2,7 @@ import path from 'node:path';
 import { binary, probe, runProcess } from '../../src/lib/process';
 import { MediaError } from '../../src/lib/composition';
 import {
-  acquire,
+  checkQuota,
   createAsset,
   dispose,
   jsonError,
@@ -12,14 +12,20 @@ import {
   session,
   streamTask,
 } from '../../src/lib/server';
+import { localQueue, waitForSlot } from '../../src/lib/work-queue';
 export async function POST(request: Request, quotaAlreadyAcquired = false) {
-  let release: (() => void) | undefined;
   try {
-    release = quotaAlreadyAcquired ? () => {} : acquire(request);
+    if (!quotaAlreadyAcquired) checkQuota(request);
     const auth = session(request);
-    const asset = await createAsset(auth.owner);
     return streamTask(request, auth.cookie, async (send, signal) => {
+      const release = quotaAlreadyAcquired
+        ? async () => {}
+        : await waitForSlot(localQueue, signal, (position) =>
+            send({ type: 'progress', stage: 'queued', position }),
+          );
+      let asset;
       try {
+        asset = await createAsset(auth.owner);
         const upload = await receiveMultipart(request, asset.dir, signal);
         if (!upload.file) throw new MediaError('error.chooseFile');
         send({ type: 'progress', stage: 'processing', progress: 5 });
@@ -70,7 +76,7 @@ export async function POST(request: Request, quotaAlreadyAcquired = false) {
               send({
                 type: 'progress',
                 stage: 'processing',
-                progress: Math.min(98, 5 + (90 * seconds) / asset.info!.duration),
+                progress: Math.min(98, 5 + (90 * seconds) / asset!.info!.duration),
               }),
           },
         );
@@ -82,16 +88,20 @@ export async function POST(request: Request, quotaAlreadyAcquired = false) {
           previewUrl: mediaUrl(asset, true),
         });
       } catch (error) {
-        await dispose(asset);
+        if (asset) await dispose(asset);
         throw error;
       } finally {
-        if (signal.aborted) await dispose(asset);
-        await releaseAsset(asset);
-        release?.();
+        try {
+          if (asset) {
+            if (signal.aborted) await dispose(asset);
+            await releaseAsset(asset);
+          }
+        } finally {
+          await release();
+        }
       }
     });
   } catch (error) {
-    release?.();
     return jsonError(error, request);
   }
 }

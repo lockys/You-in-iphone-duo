@@ -87,6 +87,17 @@ export const messages = {
   closeError: ['關閉錯誤訊息', '关闭错误信息', 'Dismiss error'],
   reload: ['重新載入', '重新加载', 'Reload'],
   'stage.uploading': ['正在上傳', '正在上传', 'Uploading'],
+  'stage.queued': ['排隊中，第 {position} 位', '排队中，第 {position} 位', 'Queued · position {position}'],
+  'error.queueFull': [
+    '目前排隊人數已滿，請稍後再試。',
+    '当前排队人数已满，请稍后重试。',
+    'The queue is full. Please try again shortly.',
+  ],
+  'error.queueTimeout': [
+    '等候時間過長，請稍後重新操作。',
+    '等待时间过长，请稍后重新操作。',
+    'The queue wait timed out. Please try again shortly.',
+  ],
   'stage.processing': ['正在處理影片', '正在处理视频', 'Processing video'],
   'stage.compositing': ['正在合成', '正在合成', 'Compositing'],
   'stage.complete': ['已完成', '已完成', 'Complete'],

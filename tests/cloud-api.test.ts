@@ -237,10 +237,13 @@ it('跨 instance 的工作數上限與限流不可由更換匿名 session 繞過
   const release = await first.acquireCloud(req('/'));
   vi.resetModules();
   const second = await import('../server/cloud-store');
-  await expect(second.acquireCloud(req('/', undefined, 'other'))).rejects.toMatchObject({
-    code: 'error.concurrent',
-  });
+  const queued = vi.fn();
+  const waiting = second.acquireCloud(req('/', undefined, 'other'), new AbortController().signal, queued);
+  await vi.waitFor(() => expect(queued).toHaveBeenCalledWith(1));
   await release();
+  await (
+    await waiting
+  )();
   const next = await second.acquireCloud(req('/'));
   await next();
   vi.stubEnv('RATE_LIMIT_MAX', '1');
